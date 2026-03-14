@@ -1,0 +1,2 @@
+description = "Perform adversarial code review finding specific issues. Use when the user says \"run code review\" or \"review this code\""
+prompt = "Activate the bmad-code-review skill and follow its instructions: {{args}}"

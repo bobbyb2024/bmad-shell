@@ -1,0 +1,2 @@
+description = "storyteller agent"
+prompt = "Activate the bmad-agent-cis-storyteller skill and follow its instructions: {{args}}"

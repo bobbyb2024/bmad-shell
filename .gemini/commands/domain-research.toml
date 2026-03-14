@@ -1,0 +1,2 @@
+description = "Conduct domain and industry research. Use when the user says \"lets create a research report on [domain or industry]\""
+prompt = "Activate the bmad-domain-research skill and follow its instructions: {{args}}"

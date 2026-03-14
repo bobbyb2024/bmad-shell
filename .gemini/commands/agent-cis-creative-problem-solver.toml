@@ -1,0 +1,2 @@
+description = "creative-problem-solver agent"
+prompt = "Activate the bmad-agent-cis-creative-problem-solver skill and follow its instructions: {{args}}"

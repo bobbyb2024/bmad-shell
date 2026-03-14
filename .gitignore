@@ -1,0 +1,28 @@
+# Python build artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+
+# Virtual environment
+.venv/
+
+# Tooling caches
+.ruff_cache/
+.pytest_cache/
+.pyright_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+xmlcov/
+coverage.xml
+
+# Local configuration
+.env
+
+# Project-specific state
+bmad-orch-state.json
+bmad-orch-state.tmp
+bmad-orch-state.backup.json

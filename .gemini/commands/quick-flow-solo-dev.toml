@@ -1,0 +1,2 @@
+description = "quick-flow-solo-dev agent"
+prompt = "Activate the bmad-quick-flow-solo-dev skill and follow its instructions: {{args}}"

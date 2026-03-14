@@ -1,0 +1,2 @@
+description = "Validate PRD, UX, Architecture and Epics specs are complete. Use when the user says \"check implementation readiness\"."
+prompt = "Activate the bmad-check-implementation-readiness skill and follow its instructions: {{args}}"

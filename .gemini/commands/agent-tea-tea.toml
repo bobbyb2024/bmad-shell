@@ -1,0 +1,2 @@
+description = "tea agent"
+prompt = "Activate the bmad-agent-tea-tea skill and follow its instructions: {{args}}"

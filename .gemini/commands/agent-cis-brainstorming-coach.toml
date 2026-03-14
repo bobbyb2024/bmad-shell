@@ -1,0 +1,2 @@
+description = "brainstorming-coach agent"
+prompt = "Activate the bmad-agent-cis-brainstorming-coach skill and follow its instructions: {{args}}"

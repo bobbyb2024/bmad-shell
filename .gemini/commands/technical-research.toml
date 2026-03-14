@@ -1,0 +1,2 @@
+description = "Conduct technical research on technologies and architecture. Use when the user says \"create a technical research report on [topic]\"."
+prompt = "Activate the bmad-technical-research skill and follow its instructions: {{args}}"

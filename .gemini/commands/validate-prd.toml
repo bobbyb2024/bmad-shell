@@ -1,0 +1,2 @@
+description = "Validate a PRD against standards. Use when the user says \"validate this PRD\" or \"run PRD validation\""
+prompt = "Activate the bmad-validate-prd skill and follow its instructions: {{args}}"

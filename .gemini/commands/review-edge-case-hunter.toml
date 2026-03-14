@@ -1,0 +1,2 @@
+description = "'Walk every branching path and boundary condition in content, report only unhandled edge cases. Orthogonal to adversarial review - method-driven not attitude-driven.'"
+prompt = "Activate the bmad-review-edge-case-hunter skill and follow its instructions: {{args}}"

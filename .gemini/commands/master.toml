@@ -1,0 +1,2 @@
+description = "bmad-master agent"
+prompt = "Activate the bmad-master skill and follow its instructions: {{args}}"

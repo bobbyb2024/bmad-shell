@@ -1,0 +1,2 @@
+description = "tech-writer agent"
+prompt = "Activate the bmad-tech-writer skill and follow its instructions: {{args}}"

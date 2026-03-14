@@ -1,0 +1,73 @@
+[project]
+name = "bmad-orch"
+version = "0.1.0"
+description = "BMAD Orchestrator - AI-driven multi-agent workflow engine for product development"
+readme = "README.md"
+authors = [
+    { name = "Bobby Bush", email = "bobby@bobbybush.com" }
+]
+requires-python = ">=3.13"
+dependencies = [
+    "libtmux>=0.55.0",
+    "psutil>=7.2.2",
+    "pydantic>=2.12.5",
+    "pydantic-settings>=2.13.1",
+    "pyyaml>=6.0.3",
+    "rich>=14.3.3",
+    "structlog>=25.5.0",
+    "typer[all]>=0.24.1",
+]
+
+[project.scripts]
+bmad-orch = "bmad_orch.cli:app"
+
+[tool.ruff]
+line-length = 120
+target-version = "py313"
+
+[tool.ruff.lint]
+select = ["E", "F", "B", "I", "N", "UP", "ANN", "S", "PT", "ARG", "PTH", "TD", "FIX"]
+ignore = []
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["S101", "ANN", "S603", "S607"]
+
+[tool.pyright]
+include = ["src"]
+typeCheckingMode = "strict"
+reportMissingTypeStubs = false
+pythonVersion = "3.13"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = "test_*.py"
+addopts = "--cov=bmad_orch --cov-report=term-missing --cov-report=xml"
+
+[tool.importlinter]
+root_package = "bmad_orch"
+
+[[tool.importlinter.contracts]]
+name = "Core engine should not depend on rendering or providers"
+type = "layers"
+layers = [
+    "bmad_orch.rendering",
+    "bmad_orch.providers",
+    "bmad_orch.engine",
+    "bmad_orch.state",
+    "bmad_orch.config",
+    "bmad_orch.types"
+]
+
+[build-system]
+requires = ["uv_build>=0.10.8,<0.11.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "import-linter>=2.11",
+    "pre-commit>=4.5.1",
+    "pyright>=1.1.408",
+    "pytest>=9.0.2",
+    "pytest-cov>=7.0.0",
+    "ruff>=0.15.6",
+]

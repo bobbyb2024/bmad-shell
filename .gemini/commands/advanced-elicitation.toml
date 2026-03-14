@@ -1,0 +1,2 @@
+description = "Push the LLM to reconsider refine and improve its recent output. Use when the user asks for advanced elicitation."
+prompt = "Activate the bmad-advanced-elicitation skill and follow its instructions: {{args}}"

@@ -1,0 +1,12 @@
+{
+  "hooksConfig": {
+    "disabled": [
+      "(context-mode hook gemini-cli sessionstart) || echo \"{}\""
+    ]
+  },
+  "skills": {
+    "disabled": [
+      "mcp2cli"
+    ]
+  }
+}

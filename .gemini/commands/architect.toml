@@ -1,0 +1,2 @@
+description = "architect agent"
+prompt = "Activate the bmad-architect skill and follow its instructions: {{args}}"

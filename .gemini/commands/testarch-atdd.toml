@@ -1,0 +1,2 @@
+description = "'Generate failing acceptance tests using TDD cycle. Use when the user says \"lets write acceptance tests\" or \"I want to do ATDD\"'"
+prompt = "Activate the bmad-testarch-atdd skill and follow its instructions: {{args}}"

@@ -1,0 +1,2 @@
+description = "'Create system-level or epic-level test plans. Use when the user says \"lets design test plan\" or \"I want to create test strategy\"'"
+prompt = "Activate the bmad-testarch-test-design skill and follow its instructions: {{args}}"

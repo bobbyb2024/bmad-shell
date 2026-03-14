@@ -1,0 +1,2 @@
+description = "presentation-master agent"
+prompt = "Activate the bmad-agent-cis-presentation-master skill and follow its instructions: {{args}}"

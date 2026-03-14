@@ -1,0 +1,2 @@
+description = "qa agent"
+prompt = "Activate the bmad-qa skill and follow its instructions: {{args}}"

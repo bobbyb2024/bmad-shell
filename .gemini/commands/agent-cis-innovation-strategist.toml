@@ -1,0 +1,2 @@
+description = "innovation-strategist agent"
+prompt = "Activate the bmad-agent-cis-innovation-strategist skill and follow its instructions: {{args}}"

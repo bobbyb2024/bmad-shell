@@ -1,0 +1,2 @@
+description = "pm agent"
+prompt = "Activate the bmad-pm skill and follow its instructions: {{args}}"

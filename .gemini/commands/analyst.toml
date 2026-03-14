@@ -1,0 +1,2 @@
+description = "analyst agent"
+prompt = "Activate the bmad-analyst skill and follow its instructions: {{args}}"

@@ -1,0 +1,2 @@
+description = "ux-designer agent"
+prompt = "Activate the bmad-ux-designer skill and follow its instructions: {{args}}"

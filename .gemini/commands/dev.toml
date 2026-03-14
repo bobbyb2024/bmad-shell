@@ -1,0 +1,2 @@
+description = "dev agent"
+prompt = "Activate the bmad-dev skill and follow its instructions: {{args}}"

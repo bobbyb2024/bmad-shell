@@ -1,0 +1,2 @@
+description = "design-thinking-coach agent"
+prompt = "Activate the bmad-agent-cis-design-thinking-coach skill and follow its instructions: {{args}}"
