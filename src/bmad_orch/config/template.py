@@ -6,7 +6,7 @@ import re
 from collections.abc import Mapping
 from typing import TYPE_CHECKING
 
-from bmad_orch.errors import ConfigError
+from bmad_orch.exceptions import ConfigError
 
 if TYPE_CHECKING:
     from bmad_orch.config.schema import OrchestratorConfig

@@ -7,7 +7,7 @@ def test_project_layout(project_root: pathlib.Path):
         "src/bmad_orch/__init__.py",
         "src/bmad_orch/py.typed",
         "src/bmad_orch/types/__init__.py",
-        "src/bmad_orch/errors.py",
+        "src/bmad_orch/exceptions.py",
         "src/bmad_orch/cli.py",
         "pyproject.toml",
     ]

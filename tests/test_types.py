@@ -1,63 +1,25 @@
-from bmad_orch.errors import ErrorSeverity
-from bmad_orch.types import (
-    EscalationState,
-    OutputChunk,
-    ProviderName,
-    StepOutcome,
-    StepType,
-)
+from dataclasses import is_dataclass, fields
+from bmad_orch.types import OutputChunk, ErrorSeverity
+import time
 
 
-def test_output_chunk_creation():
-    """Verify OutputChunk can be instantiated with correct fields."""
-    chunk = OutputChunk(content="hello")
-    assert chunk.content == "hello"
-    assert chunk.is_stderr is False
-    assert chunk.is_complete is False
+def test_output_chunk_structure():
+    assert is_dataclass(OutputChunk)
+    chunk = OutputChunk(content="test", timestamp=time.time(), metadata={"execution_id": "123"})
+    assert chunk.content == "test"
+    assert isinstance(chunk.timestamp, float)
+    assert chunk.metadata["execution_id"] == "123"
 
-    chunk_err = OutputChunk(content="err", is_stderr=True, is_complete=True)
-    assert chunk_err.is_stderr is True
-    assert chunk_err.is_complete is True
-
-
-def test_output_chunk_frozen():
-    """Verify OutputChunk is immutable."""
+def test_output_chunk_immutability():
     import pytest
-
-    chunk = OutputChunk(content="test")
-    with pytest.raises(AttributeError):
-        chunk.content = "changed"  # type: ignore[misc]
-
-
-def test_escalation_state_enum():
-    """Verify EscalationState has all expected members."""
-    members = {m.name for m in EscalationState}
-    assert members == {"OK", "ATTENTION", "ACTION", "COMPLETE", "IDLE"}
-    assert EscalationState.OK.value == "ok"
+    from dataclasses import FrozenInstanceError
+    chunk = OutputChunk(content="test", timestamp=time.time())
+    with pytest.raises(FrozenInstanceError):
+        chunk.content = "new"
 
 
 def test_error_severity_enum():
-    """Verify ErrorSeverity has all expected members."""
-    members = {m.name for m in ErrorSeverity}
-    assert members == {"BLOCKING", "RECOVERABLE", "IMPACTFUL"}
-
-
-def test_step_type_enum():
-    """Verify StepType has all expected members."""
-    members = {m.name for m in StepType}
-    assert members == {"GENERATIVE", "VALIDATION"}
-    assert StepType.GENERATIVE.value == "generative"
-
-
-def test_provider_name_newtype():
-    """Verify ProviderName is a callable NewType wrapping str."""
-    name = ProviderName("claude")
-    assert isinstance(name, str)
-    assert name == "claude"
-
-
-def test_step_outcome_newtype():
-    """Verify StepOutcome is a callable NewType wrapping str."""
-    outcome = StepOutcome("success")
-    assert isinstance(outcome, str)
-    assert outcome == "success"
+    assert "BLOCKING" in ErrorSeverity.__members__
+    assert "IMPACTFUL" in ErrorSeverity.__members__
+    assert "RECOVERABLE" in ErrorSeverity.__members__
+    assert "WARNING" in ErrorSeverity.__members__

@@ -3,7 +3,7 @@ import pytest
 
 def test_error_inheritance():
     """Verify that all custom errors inherit from BmadOrchError."""
-    from bmad_orch.errors import (
+    from bmad_orch.exceptions import (
         BmadOrchError,
         ConfigError,
         GitError,
@@ -30,7 +30,7 @@ def test_error_inheritance():
 
 def test_error_instantiation():
     """Verify that exceptions can be raised and caught correctly."""
-    from bmad_orch.errors import BmadOrchError, ConfigError, ProviderNotFoundError
+    from bmad_orch.exceptions import BmadOrchError, ConfigError, ProviderNotFoundError
 
     with pytest.raises(BmadOrchError):
         raise ConfigError("Config failure")
@@ -39,8 +39,8 @@ def test_error_instantiation():
 
 
 def test_error_severity():
-    """Verify that error classes have correct severity attributes."""
-    from bmad_orch.errors import (
+    """Verify that error classes have correct default severity via __init__."""
+    from bmad_orch.exceptions import (
         ConfigError,
         ErrorSeverity,
         ProviderCrashError,
@@ -49,8 +49,8 @@ def test_error_severity():
         WizardError,
     )
 
-    assert ConfigError.default_severity == ErrorSeverity.BLOCKING
-    assert ProviderNotFoundError.default_severity == ErrorSeverity.BLOCKING
-    assert ProviderTimeoutError.default_severity == ErrorSeverity.RECOVERABLE
-    assert ProviderCrashError.default_severity == ErrorSeverity.IMPACTFUL
-    assert WizardError.default_severity == ErrorSeverity.BLOCKING
+    assert ConfigError("test").severity == ErrorSeverity.BLOCKING
+    assert ProviderNotFoundError("test").severity == ErrorSeverity.BLOCKING
+    assert ProviderTimeoutError("test").severity == ErrorSeverity.RECOVERABLE
+    assert ProviderCrashError("test").severity == ErrorSeverity.IMPACTFUL
+    assert WizardError("test").severity == ErrorSeverity.BLOCKING

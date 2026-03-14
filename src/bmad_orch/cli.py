@@ -14,7 +14,7 @@ from rich.panel import Panel
 from rich.text import Text
 
 from bmad_orch.config import get_config, load_config_file, validate_config
-from bmad_orch.errors import BmadOrchError, ConfigError, ConfigProviderError, StateError
+from bmad_orch.exceptions import BmadOrchError, ConfigError, ConfigProviderError, StateError
 from bmad_orch.rendering.summary import render_playbook_summary
 from bmad_orch.engine.runner import Runner
 from bmad_orch.state.schema import OrchestratorState

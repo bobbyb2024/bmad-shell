@@ -1,7 +1,7 @@
 import pytest
 
 from bmad_orch.config.schema import OrchestratorConfig, validate_config
-from bmad_orch.errors import ConfigError
+from bmad_orch.exceptions import ConfigError
 
 
 @pytest.fixture

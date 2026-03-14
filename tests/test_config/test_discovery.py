@@ -4,7 +4,7 @@ import pytest
 import yaml
 
 from bmad_orch.config.discovery import discover_config_path, get_config, load_config_file
-from bmad_orch.errors import ConfigError
+from bmad_orch.exceptions import ConfigError
 
 
 def test_discover_config_path_explicit(tmp_path):

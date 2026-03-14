@@ -1,8 +1,11 @@
 import pathlib
 import tomllib
-
 import pytest
 import yaml
+import time
+from typing import AsyncIterator, Any
+from bmad_orch.providers import ProviderAdapter, register_adapter, clear_registry
+from bmad_orch.types import OutputChunk
 
 VALID_CONFIG_DATA = {
     "providers": {1: {"name": "p1", "cli": "c1", "model": "m1"}},
@@ -39,3 +42,29 @@ def valid_config_file(tmp_path):
     config_file = tmp_path / "bmad-orch.yaml"
     config_file.write_text(yaml.dump(VALID_CONFIG_DATA))
     return config_file
+
+
+class MockProvider(ProviderAdapter):
+    def __init__(self, **config):
+        self.config = config
+
+    def detect(self) -> bool:
+        return True
+
+    def list_models(self) -> list[dict[str, Any]]:
+        return [{"id": "mock-model"}]
+
+    async def _execute(self, prompt: str, **kwargs) -> AsyncIterator[OutputChunk]:
+        yield OutputChunk(
+            content=f"Echo: {prompt}",
+            timestamp=time.time(),
+            metadata={}
+        )
+
+
+@pytest.fixture(autouse=True)
+def reset_registry():
+    """Clear the provider registry before each test."""
+    clear_registry()
+    yield
+    clear_registry()

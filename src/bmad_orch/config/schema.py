@@ -2,7 +2,7 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator, model_validator
 
-from bmad_orch.errors import ConfigError, ConfigProviderError
+from bmad_orch.exceptions import ConfigError, ConfigProviderError
 from bmad_orch.types import StepType, Timing
 
 

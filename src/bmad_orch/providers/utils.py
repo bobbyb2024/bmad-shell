@@ -1,0 +1,131 @@
+import asyncio
+import os
+import time
+import signal
+import fcntl
+import errno
+import codecs
+from typing import AsyncIterator, Any
+from bmad_orch.types import OutputChunk
+from bmad_orch.exceptions import ProviderTimeoutError, ProviderCrashError
+
+
+async def spawn_pty_process(
+    cmd: list[str], timeout: float = 30.0
+) -> AsyncIterator[OutputChunk]:
+    """Spawn a process in a PTY and yield output chunks."""
+    if os.name != "posix":
+        raise NotImplementedError("spawn_pty_process is only supported on POSIX.")
+
+    master_fd, slave_fd = os.openpty()
+
+    # Set master_fd to non-blocking
+    flags = fcntl.fcntl(master_fd, fcntl.F_GETFL)
+    fcntl.fcntl(master_fd, fcntl.F_SETFL, flags | os.O_NONBLOCK)
+
+    try:
+        process = await asyncio.create_subprocess_exec(
+            *cmd,
+            stdin=slave_fd,
+            stdout=slave_fd,
+            stderr=slave_fd,
+            close_fds=False,  # Keep FDs open for child
+            start_new_session=True,
+        )
+    finally:
+        # We MUST close slave_fd in the parent process as soon as child has it
+        os.close(slave_fd)
+
+    queue = asyncio.Queue()
+    loop = asyncio.get_running_loop()
+
+    def read_callback():
+        try:
+            data = os.read(master_fd, 4096)
+            if not data:
+                # EOF
+                loop.remove_reader(master_fd)
+                queue.put_nowait(None)
+            else:
+                queue.put_nowait(data)
+        except (BlockingIOError, InterruptedError):
+            pass
+        except OSError as e:
+            if e.errno == errno.EIO:
+                # EIO means slave closed, treat as EOF
+                loop.remove_reader(master_fd)
+                queue.put_nowait(None)
+            else:
+                loop.remove_reader(master_fd)
+                queue.put_nowait(e)
+        except Exception as e:
+            loop.remove_reader(master_fd)
+            queue.put_nowait(e)
+
+    loop.add_reader(master_fd, read_callback)
+
+    start_time = time.time()
+    decoder = codecs.getincrementaldecoder("utf-8")(errors="replace")
+    
+    try:
+        while True:
+            elapsed = time.time() - start_time
+            remaining = max(0.0, timeout - elapsed)
+            if remaining <= 0:
+                raise asyncio.TimeoutError()
+
+            try:
+                # Wait for data or timeout
+                data = await asyncio.wait_for(queue.get(), timeout=remaining)
+                if data is None:
+                    # EOF
+                    break
+                if isinstance(data, Exception):
+                    raise data
+
+                text = decoder.decode(data, final=False)
+                if text:
+                    yield OutputChunk(content=text, timestamp=time.time())
+
+            except asyncio.TimeoutError:
+                # Handle total timeout reached — kill entire process group
+                try:
+                    os.killpg(process.pid, signal.SIGTERM)
+                except (ProcessLookupError, PermissionError):
+                    process.terminate()
+                try:
+                    await asyncio.wait_for(process.wait(), timeout=2.0)
+                except asyncio.TimeoutError:
+                    try:
+                        os.killpg(process.pid, signal.SIGKILL)
+                    except (ProcessLookupError, PermissionError):
+                        process.kill()
+                    await process.wait()
+                raise ProviderTimeoutError(f"Process {cmd} timed out after {timeout}s")
+
+        await process.wait()
+        if process.returncode != 0:
+            raise ProviderCrashError(
+                f"Process {cmd} failed with exit code {process.returncode}"
+            )
+
+    finally:
+        loop.remove_reader(master_fd)
+        try:
+            os.close(master_fd)
+        except OSError:
+            pass
+
+        if process.returncode is None:
+            try:
+                os.killpg(process.pid, signal.SIGTERM)
+            except (ProcessLookupError, PermissionError):
+                process.terminate()
+            try:
+                await asyncio.wait_for(process.wait(), timeout=1.0)
+            except asyncio.TimeoutError:
+                try:
+                    os.killpg(process.pid, signal.SIGKILL)
+                except (ProcessLookupError, PermissionError):
+                    process.kill()
+                await process.wait()

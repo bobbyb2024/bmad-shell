@@ -4,7 +4,7 @@ from typing import Any
 import yaml
 
 from bmad_orch.config.schema import OrchestratorConfig, validate_config
-from bmad_orch.errors import ConfigError
+from bmad_orch.exceptions import ConfigError
 
 _MAX_CONFIG_SIZE = 1_048_576  # 1 MB
 

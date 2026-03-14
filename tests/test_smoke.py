@@ -8,12 +8,12 @@ runner = CliRunner()
 def test_import_core_modules():
     """Verify that all core modules can be imported."""
     import bmad_orch.cli
-    import bmad_orch.errors
+    import bmad_orch.exceptions
     import bmad_orch.types
 
     assert bmad_orch.cli is not None
     assert bmad_orch.types is not None
-    assert bmad_orch.errors is not None
+    assert bmad_orch.exceptions is not None
 
 
 def test_cli_help_smoke():
@@ -35,8 +35,8 @@ def test_core_types_availability():
 
 
 def test_error_hierarchy_availability():
-    """Verify error hierarchy is available in bmad_orch.errors."""
-    from bmad_orch.errors import (
+    """Verify error hierarchy is available in bmad_orch.exceptions."""
+    from bmad_orch.exceptions import (
         BmadOrchError,
         ConfigError,
         GitError,
@@ -72,7 +72,7 @@ def test_py_typed_exists():
 
 def test_error_severity_defaults():
     """Verify that error severities are correctly applied."""
-    from bmad_orch.errors import BmadOrchError, ConfigError, ErrorSeverity
+    from bmad_orch.exceptions import BmadOrchError, ConfigError, ErrorSeverity
 
     err = ConfigError("test")
     assert err.severity == ErrorSeverity.BLOCKING

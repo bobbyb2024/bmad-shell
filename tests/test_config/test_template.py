@@ -5,7 +5,7 @@ from collections.abc import Mapping
 import pytest
 
 from bmad_orch.config.template import TemplateResolver, resolve_step_prompts
-from bmad_orch.errors import ConfigError
+from bmad_orch.exceptions import ConfigError
 
 
 @pytest.fixture
