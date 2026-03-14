@@ -3,6 +3,7 @@ from typing import Any
 from bmad_orch.exceptions import ProviderNotFoundError
 from bmad_orch.providers.base import ProviderAdapter
 from bmad_orch.providers.claude import ClaudeAdapter
+from bmad_orch.providers.gemini import GeminiAdapter
 
 # Internal registry of provider classes
 _registry: dict[str, type[ProviderAdapter]] = {}
@@ -23,6 +24,7 @@ def register_adapter(name: str, adapter_cls: type[ProviderAdapter]) -> None:
 
 # Pre-register known adapters
 register_adapter("claude", ClaudeAdapter)
+register_adapter("gemini", GeminiAdapter)
 
 
 def get_adapter(name: str, **config: Any) -> ProviderAdapter:

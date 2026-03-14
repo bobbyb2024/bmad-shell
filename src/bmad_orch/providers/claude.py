@@ -18,6 +18,8 @@ from dataclasses import replace
 class ClaudeAdapter(ProviderAdapter):
     """Adapter for official Claude CLI (claude-code)."""
 
+    install_hint: str = "npm install -g @anthropic-ai/claude-code"
+
     def __init__(self) -> None:
         self._version = "unknown"
         self._path = None

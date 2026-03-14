@@ -1,4 +1,9 @@
-from bmad_orch.config.discovery import discover_config_path, get_config, load_config_file
+from bmad_orch.config.discovery import (
+    discover_config_path,
+    get_config,
+    load_config_file,
+    validate_provider_availability,
+)
 from bmad_orch.config.schema import (
     CycleConfig,
     ErrorConfig,
@@ -25,4 +30,5 @@ __all__ = [
     "discover_config_path",
     "load_config_file",
     "get_config",
+    "validate_provider_availability",
 ]

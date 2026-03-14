@@ -52,8 +52,8 @@ development_status:
   epic-2: in-progress
   2-1-provider-adapter-interface-detection-framework: done
   2-2-claude-cli-adapter: done
-  2-3-gemini-cli-adapter: backlog
-  2-4-single-provider-graceful-mode: backlog
+  2-3-gemini-cli-adapter: done
+  2-4-single-provider-graceful-mode: done
   epic-2-retrospective: optional
   epic-3: backlog
   3-1-event-emitter-event-types: backlog

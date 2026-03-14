@@ -9,6 +9,8 @@ from bmad_orch.types import OutputChunk
 class ProviderAdapter(ABC):
     """Abstract Base Class for all provider adapters."""
 
+    install_hint: str = "Install the CLI for this provider."
+
     @abstractmethod
     def detect(self) -> bool:
         """Detect if the provider CLI binary is available on the system."""

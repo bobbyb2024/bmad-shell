@@ -13,7 +13,12 @@ from rich.live import Live
 from rich.panel import Panel
 from rich.text import Text
 
-from bmad_orch.config import get_config, load_config_file, validate_config
+from bmad_orch.config import (
+    get_config,
+    load_config_file,
+    validate_config,
+    validate_provider_availability,
+)
 from bmad_orch.exceptions import BmadOrchError, ConfigError, ConfigProviderError, StateError
 from bmad_orch.rendering.summary import render_playbook_summary
 from bmad_orch.engine.runner import Runner
@@ -149,6 +154,7 @@ def start(
     error_console = get_error_console()
     try:
         cfg, source_path = get_config(config)
+        validate_provider_availability(cfg)
     except ConfigProviderError as e:
         error_console.print(f"[red]{e}[/red]")
         raise typer.Exit(code=2) from e
@@ -248,7 +254,8 @@ def validate(
     error_console = get_error_console()
     try:
         cfg, source_path = get_config(config)
-        console.print(f"[green]✓ Configuration is valid.[/green] (loaded from {source_path})")
+        validate_provider_availability(cfg)
+        console.print(f"[green]✓ Configuration is valid and providers are available.[/green] (loaded from {source_path})")
 
         # Report providers and models
         console.print("\n[bold]Detected Configuration:[/bold]")

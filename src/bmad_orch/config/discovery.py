@@ -1,12 +1,69 @@
 import pathlib
+import sys
 from typing import Any
 
 import yaml
 
 from bmad_orch.config.schema import OrchestratorConfig, validate_config
 from bmad_orch.exceptions import ConfigError
+from bmad_orch.providers import get_adapter, _registry
 
 _MAX_CONFIG_SIZE = 1_048_576  # 1 MB
+
+
+def validate_provider_availability(config: OrchestratorConfig) -> None:
+    """Validate that all providers referenced in the config are available.
+
+    Args:
+        config (OrchestratorConfig): The validated configuration.
+
+    Raises:
+        ConfigError: If a referenced provider is missing, or if no providers are detected.
+    """
+    referenced_providers = set()
+    for pid, pcfg in config.providers.items():
+        referenced_providers.add(pcfg.name.lower())
+
+    detected_providers = {}
+    
+    # We check ALL registered providers to provide install hints if NONE are found
+    for name, adapter_cls in _registry.items():
+        try:
+            # We instantiate without config just for detection
+            adapter = get_adapter(name)
+            if adapter.detect():
+                detected_providers[name] = True
+            else:
+                detected_providers[name] = False
+        except Exception as e:
+            # AC5: Handle detection failure
+            # In a real app we would use a logger, but here we'll use print/sys.stderr
+            # since the Story doesn't define a logging subsystem yet (it's in Epic 3).
+            print(f"WARNING: Unexpected error detecting provider '{name}': {e}", file=sys.stderr)
+            detected_providers[name] = False
+
+    # AC4: No providers detected at all
+    if not any(detected_providers.values()):
+        error_lines = ["✗ No CLI providers detected. Please install at least one:"]
+        for name, adapter_cls in _registry.items():
+            error_lines.append(f"  - {name}: {adapter_cls.install_hint}")
+        raise ConfigError("\n".join(error_lines))
+
+    # AC1: Missing referenced provider
+    missing_referenced = []
+    for name in referenced_providers:
+        if not detected_providers.get(name, False):
+            missing_referenced.append(name)
+
+    if missing_referenced:
+        error_lines = ["✗ Missing referenced provider(s):"]
+        for name in missing_referenced:
+            adapter_cls = _registry.get(name)
+            hint = adapter_cls.install_hint if adapter_cls else "Install the CLI for this provider."
+            error_lines.append(f"  - {name}: {hint}")
+        raise ConfigError("\n".join(error_lines))
+
+    # AC2 & AC3: Single-provider or all referenced providers present - validation passes.
 
 
 def discover_config_path(explicit_path: str | None = None) -> pathlib.Path:
