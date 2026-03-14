@@ -1433,3 +1433,36 @@ The code is now fully compliant with the Story 2.4 requirements and follows the 
 [2026-03-14 12:48:03] ────────────────────────────────────────────────────────────
 [2026-03-14 12:48:03]   GIT: Committing and pushing (2-4-single-provider-graceful-mode)
 [2026-03-14 12:48:03] ────────────────────────────────────────────────────────────
+warning: adding embedded git repository: .claude/worktrees/nifty-hamilton
+hint: You've added another git repository inside your current repository.
+hint: Clones of the outer repository will not contain the contents of
+hint: the embedded repository and will not know how to obtain it.
+hint: If you meant to add a submodule, use:
+hint:
+hint: 	git submodule add <url> .claude/worktrees/nifty-hamilton
+hint:
+hint: If you added this path by mistake, you can remove it from the
+hint: index with:
+hint:
+hint: 	git rm --cached .claude/worktrees/nifty-hamilton
+hint:
+hint: See "git help submodule" for more information.
+hint: Disable this message with "git config set advice.addEmbeddedRepo false"
+[main d171ed1] feat(story): complete lifecycle for 2-4-single-provider-graceful-mode
+ 17 files changed, 2308 insertions(+), 342 deletions(-)
+ create mode 160000 .claude/worktrees/nifty-hamilton
+ create mode 100644 _bmad-output/test-artifacts/atdd-checklist-story-2-4.md
+ delete mode 100644 tests/test_cli_discovery.py
+ create mode 100644 tests/test_cli_provider_validation_atdd.py
+ create mode 100644 tests/test_config_discovery.py
+ create mode 100644 tests/test_provider_availability_atdd.py
+To github.com:bobbyb2024/bmad-shell.git
+   64adfe0..d171ed1  main -> main
+[2026-03-14 12:48:03]   GIT: Committed and pushed successfully.
+[2026-03-14 12:48:03] 
+[2026-03-14 12:48:03] ╔════════════════════════════════════════════════════════════╗
+[2026-03-14 12:48:03]   COMPLETE: 2-4-single-provider-graceful-mode
+[2026-03-14 12:48:03]   Log: _bmad-output/implementation-artifacts/2-4-single-provider-graceful-mode-cycle.log
+[2026-03-14 12:48:03]   Finished: 2026-03-14 12:48:03
+[2026-03-14 12:48:03] ╚════════════════════════════════════════════════════════════╝
+[2026-03-14 12:48:03] 

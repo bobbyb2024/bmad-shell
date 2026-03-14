@@ -5,7 +5,7 @@ from unittest.mock import patch, MagicMock
 import pytest
 import shutil
 
-from bmad_orch.exceptions import ProviderCrashError, ProviderError, ProviderTimeoutError
+from bmad_orch.exceptions import ProviderCrashError, ProviderError, ProviderTimeoutError, ProviderTransientError
 from bmad_orch.providers.claude import ClaudeAdapter
 from bmad_orch.types import OutputChunk
 
@@ -74,7 +74,7 @@ async def test_execute_defensive_parsing_html():
                 yield c
 
         with patch("bmad_orch.providers.claude.spawn_pty_process", side_effect=mock_spawn):
-            with pytest.raises(ProviderError, match="Corrupted/Provider Error detected: <html>"):
+            with pytest.raises(ProviderTransientError, match="Transient Provider Error detected: <html>"):
                 async for _ in adapter.execute("test prompt"):
                     pass
 
@@ -88,7 +88,7 @@ async def test_execute_defensive_parsing_binary():
                 yield c
 
         with patch("bmad_orch.providers.claude.spawn_pty_process", side_effect=mock_spawn):
-            with pytest.raises(ProviderError, match=r"Corrupted/Provider Error \(binary detected\)."):
+            with pytest.raises(ProviderError, match=r"Impactful Provider Error \(binary detected\)."):
                 async for _ in adapter.execute("test prompt"):
                     pass
 

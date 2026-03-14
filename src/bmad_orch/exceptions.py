@@ -48,6 +48,13 @@ class ProviderTimeoutError(ProviderError):
         super().__init__(message, severity)
 
 
+class ProviderTransientError(ProviderError):
+    """Raised when a provider encounters a transient, retryable error (e.g., 502, 429)."""
+
+    def __init__(self, message: str, severity: ErrorSeverity = ErrorSeverity.RECOVERABLE) -> None:
+        super().__init__(message, severity)
+
+
 class ProviderCrashError(ProviderError):
     """Raised when a provider crashes."""
 

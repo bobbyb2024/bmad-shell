@@ -5,7 +5,7 @@ import pytest
 import shutil
 import subprocess
 
-from bmad_orch.exceptions import ProviderCrashError, ProviderError, ProviderTimeoutError
+from bmad_orch.exceptions import ProviderCrashError, ProviderError, ProviderTimeoutError, ProviderTransientError
 from bmad_orch.providers.gemini import GeminiAdapter
 from bmad_orch.types import OutputChunk
 
@@ -173,7 +173,7 @@ async def test_execute_defensive_parsing_html():
             yield OutputChunk(content="<html><body>502 Bad Gateway</body></html>", timestamp=1.0)
 
         with patch("bmad_orch.providers.gemini.spawn_pty_process", side_effect=mock_spawn):
-            with pytest.raises(ProviderError, match="Corrupted/Provider Error"):
+            with pytest.raises(ProviderTransientError, match="Transient Provider Error detected: <html>"):
                 async for _ in adapter.execute("test prompt"):
                     pass
 
@@ -185,7 +185,7 @@ async def test_execute_defensive_parsing_cloudflare():
             yield OutputChunk(content="Cloudflare error occurred", timestamp=1.0)
 
         with patch("bmad_orch.providers.gemini.spawn_pty_process", side_effect=mock_spawn):
-            with pytest.raises(ProviderError, match="Corrupted/Provider Error"):
+            with pytest.raises(ProviderTransientError, match="Transient Provider Error detected: Cloudflare"):
                 async for _ in adapter.execute("test prompt"):
                     pass
 
@@ -197,7 +197,7 @@ async def test_execute_defensive_parsing_permission_denied():
             yield OutputChunk(content="Error: PERMISSION_DENIED", timestamp=1.0)
 
         with patch("bmad_orch.providers.gemini.spawn_pty_process", side_effect=mock_spawn):
-            with pytest.raises(ProviderError, match="Corrupted/Provider Error"):
+            with pytest.raises(ProviderError, match="Impactful Provider Error detected: PERMISSION_DENIED"):
                 async for _ in adapter.execute("test prompt"):
                     pass
 
@@ -290,7 +290,7 @@ async def test_execute_defensive_parsing_binary():
             yield OutputChunk(content="Some \x00 binary", timestamp=1.0)
 
         with patch("bmad_orch.providers.gemini.spawn_pty_process", side_effect=mock_spawn):
-            with pytest.raises(ProviderError, match=r"Corrupted/Provider Error \(binary detected\)"):
+            with pytest.raises(ProviderError, match=r"Impactful Provider Error \(binary detected\)."):
                 async for _ in adapter.execute("test prompt"):
                     pass
 
@@ -398,7 +398,7 @@ async def test_execute_defensive_parsing_beyond_2kb():
             yield OutputChunk(content="<html>502 Bad Gateway</html>", timestamp=2.0)
 
         with patch("bmad_orch.providers.gemini.spawn_pty_process", side_effect=mock_spawn):
-            with pytest.raises(ProviderError, match="Corrupted/Provider Error"):
+            with pytest.raises(ProviderTransientError, match="Transient Provider Error detected: <html>"):
                 async for _ in adapter.execute("test prompt"):
                     pass
 
@@ -412,7 +412,7 @@ async def test_execute_defensive_parsing_binary_beyond_2kb():
             yield OutputChunk(content="binary \x00 data", timestamp=2.0)
 
         with patch("bmad_orch.providers.gemini.spawn_pty_process", side_effect=mock_spawn):
-            with pytest.raises(ProviderError, match="Corrupted/Provider Error \\(binary detected\\)"):
+            with pytest.raises(ProviderError, match=r"Impactful Provider Error \(binary detected\)."):
                 async for _ in adapter.execute("test prompt"):
                     pass
 
@@ -425,6 +425,6 @@ async def test_execute_defensive_parsing_403_forbidden():
             yield OutputChunk(content="403 Forbidden", timestamp=1.0)
 
         with patch("bmad_orch.providers.gemini.spawn_pty_process", side_effect=mock_spawn):
-            with pytest.raises(ProviderError, match="Corrupted/Provider Error"):
+            with pytest.raises(ProviderError, match="Impactful Provider Error detected: 403 Forbidden"):
                 async for _ in adapter.execute("test prompt"):
                     pass

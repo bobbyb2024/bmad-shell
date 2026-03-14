@@ -9,7 +9,7 @@ from collections.abc import AsyncIterator
 from typing import Any
 from dataclasses import replace
 
-from bmad_orch.exceptions import ProviderCrashError, ProviderError, ProviderTimeoutError
+from bmad_orch.exceptions import ProviderCrashError, ProviderError, ProviderTimeoutError, ProviderTransientError
 from bmad_orch.providers.base import ProviderAdapter
 from bmad_orch.providers.utils import spawn_pty_process
 from bmad_orch.types import OutputChunk
@@ -177,11 +177,11 @@ class ClaudeAdapter(ProviderAdapter):
                     # Regex checks
                     for pattern in self._corruption_patterns:
                         if pattern.search(check_text):
-                            raise ProviderError(f"Corrupted/Provider Error detected: {pattern.pattern}")
+                            raise ProviderTransientError(f"Transient Provider Error detected: {pattern.pattern}")
 
                     # Binary check
                     if "\x00" in content:
-                        raise ProviderError("Corrupted/Provider Error (binary detected).")
+                        raise ProviderError("Impactful Provider Error (binary detected).")
 
                     # AC4: Merge metadata
                     new_metadata = {**current_meta, **chunk.metadata}
@@ -199,16 +199,19 @@ class ClaudeAdapter(ProviderAdapter):
 
             except asyncio.CancelledError:
                 raise
-            except (ProviderTimeoutError, ProviderCrashError) as e:
+            except (ProviderTimeoutError, ProviderCrashError, ProviderTransientError) as e:
                 # AC6: Append version info
                 msg = f"{e} (Claude CLI Version: {ClaudeAdapter._cli_version})"
                 
-                # AC9: Retry logic
-                if isinstance(e, ProviderCrashError) and attempts <= max_retries:
+                # AC9: Retry logic for both crash (non-zero exit) and transient (parsed) errors
+                is_retryable = isinstance(e, (ProviderCrashError, ProviderTransientError))
+                if is_retryable and attempts <= max_retries:
                     delay = initial_delay * (backoff_factor ** (attempts - 1))
                     await asyncio.sleep(delay)
                     continue
 
                 if isinstance(e, ProviderTimeoutError):
                     raise ProviderTimeoutError(msg) from e
+                if isinstance(e, ProviderTransientError):
+                    raise ProviderTransientError(msg) from e
                 raise ProviderCrashError(msg) from e
