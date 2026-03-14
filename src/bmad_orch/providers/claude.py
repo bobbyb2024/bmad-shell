@@ -13,11 +13,14 @@ from bmad_orch.providers.utils import spawn_pty_process
 from bmad_orch.types import OutputChunk
 
 
+from dataclasses import replace
+
 class ClaudeAdapter(ProviderAdapter):
     """Adapter for official Claude CLI (claude-code)."""
 
     def __init__(self) -> None:
         self._version = "unknown"
+        self._path = None
         # Regex for AC7: Corrupted/HTML Provider Output
         self._corruption_patterns = [
             re.compile(r"<html>", re.IGNORECASE),
@@ -27,11 +30,11 @@ class ClaudeAdapter(ProviderAdapter):
 
     def detect(self) -> bool:
         """Detect if the 'claude' command is available on the system."""
-        path = shutil.which("claude")
-        if path:
+        self._path = shutil.which("claude")
+        if self._path:
             try:
                 # Use absolute path found by which
-                version_out = subprocess.check_output([path, "--version"], stderr=subprocess.STDOUT)  # noqa: S603
+                version_out = subprocess.check_output([self._path, "--version"], stderr=subprocess.STDOUT)  # noqa: S603
                 self._version = version_out.decode().strip()
             except (subprocess.SubprocessError, UnicodeDecodeError):
                 self._version = "unknown-claude-cli"
@@ -41,7 +44,7 @@ class ClaudeAdapter(ProviderAdapter):
     def list_models(self) -> list[dict[str, Any]]:
         """List available models for Claude. AC2: Discover via CLI with fallback."""
         # Attempt to discover models via CLI
-        path = shutil.which("claude")
+        path = self._path or shutil.which("claude")
         if path:
             try:
                 # Early versions of 'claude' CLI might use 'models list' or similar.
@@ -50,7 +53,7 @@ class ClaudeAdapter(ProviderAdapter):
                 output = subprocess.check_output([path, "models", "list", "--json"], stderr=subprocess.STDOUT)  # noqa: S603
                 # Hypothetical JSON parsing
                 models = json.loads(output)
-                if isinstance(models, list) and all(isinstance(m, dict) and "id" in m for m in models):
+                if isinstance(models, list) and len(models) > 0 and all(isinstance(m, dict) and "id" in m for m in models):
                     return models
             except (subprocess.SubprocessError, json.JSONDecodeError, UnicodeDecodeError):
                 pass
@@ -70,25 +73,36 @@ class ClaudeAdapter(ProviderAdapter):
         if not api_key:
             raise ProviderError("ANTHROPIC_API_KEY environment variable is mandatory for ClaudeAdapter.")
 
-        env = {**os.environ}
+        # Construct env dict per AC3 (mandatory + optional)
+        # We must include PATH to allow CLI to run and find its dependencies
+        env = {"PATH": os.environ.get("PATH", "")}
         env["ANTHROPIC_API_KEY"] = api_key
         log_level = os.environ.get("CLAUDE_LOG_LEVEL")
         if log_level:
             env["CLAUDE_LOG_LEVEL"] = log_level
         
-        # Merge other env vars if needed or just keep it tight per AC3
-        cmd = ["claude", "--model", model, prompt]
+        # Use cached path if available, otherwise fallback to "claude"
+        executable = self._path or "claude"
+        cmd = [executable, "--model", model, prompt]
         
         timeout = float(kwargs.get("timeout", 60.0))
         
         # Safe float conversion for grace period
         try:
             grace_period = float(os.environ.get("CLAUDE_TERMINATION_GRACE_PERIOD", 2.0))
-        except ValueError:
+        except (ValueError, TypeError):
             grace_period = 2.0
             
         buffer_checked = False
         initial_buffer = ""
+
+        # Prepare base metadata for merging as per AC4
+        base_meta = self._get_base_metadata(**kwargs)
+        base_meta.update({
+            "provider": "claude",
+            "model": model,
+            "version": self._version
+        })
 
         try:
             async for chunk in spawn_pty_process(cmd, timeout=timeout, env=env, grace_period=grace_period):
@@ -103,8 +117,13 @@ class ClaudeAdapter(ProviderAdapter):
                     if len(initial_buffer) >= 1024:
                         buffer_checked = True
 
+                # AC4: Merge metadata
+                new_metadata = {**base_meta, **chunk.metadata}
+                chunk = replace(chunk, metadata=new_metadata)
+                
                 # Yield the chunk
                 yield chunk
+
 
         except asyncio.CancelledError:
             # AC8: Graceful Cancellation handled partially by spawn_pty_process 

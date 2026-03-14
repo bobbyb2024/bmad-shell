@@ -11,7 +11,7 @@ from bmad_orch.exceptions import ProviderTimeoutError, ProviderCrashError
 
 
 async def spawn_pty_process(
-    cmd: list[str], timeout: float = 30.0, env: dict[str, str] = None, grace_period: float = 2.0
+    cmd: list[str], timeout: float = 30.0, env: dict[str, str] | None = None, grace_period: float = 2.0
 ) -> AsyncIterator[OutputChunk]:
     """Spawn a process in a PTY and yield output chunks."""
     if os.name != "posix":

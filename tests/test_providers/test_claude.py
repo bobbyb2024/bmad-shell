@@ -1,3 +1,4 @@
+import asyncio
 from unittest.mock import patch
 
 import pytest
@@ -24,12 +25,12 @@ def test_detect_failure():
 
 def test_list_models_fallback():
     adapter = ClaudeAdapter()
-    # Mock subprocess.check_output to raise CalledProcessError to trigger fallback
     import subprocess
-    with patch("subprocess.check_output", side_effect=subprocess.CalledProcessError(1, "cmd")):
-        models = adapter.list_models()
-        assert len(models) == 2
-        assert models[0]["id"] == "claude-3-5-sonnet-latest"
+    with patch("shutil.which", return_value="/usr/local/bin/claude"):
+        with patch("subprocess.check_output", side_effect=subprocess.CalledProcessError(1, "cmd")):
+            models = adapter.list_models()
+            assert len(models) == 2
+            assert models[0]["id"] == "claude-3-5-sonnet-latest"
 
 def test_list_models_success():
     adapter = ClaudeAdapter()
@@ -130,6 +131,19 @@ async def test_execute_timeout_with_version():
 
         with patch("bmad_orch.providers.claude.spawn_pty_process", side_effect=mock_spawn):
             with pytest.raises(ProviderTimeoutError, match="claude 0.1.0"):
+                async for _ in adapter.execute("test prompt"):
+                    pass
+
+@pytest.mark.asyncio
+async def test_execute_cancellation():
+    adapter = ClaudeAdapter()
+    with patch.dict("os.environ", {"ANTHROPIC_API_KEY": "test-key"}, clear=False):
+        async def mock_spawn(*args, **kwargs):
+            yield OutputChunk(content="partial", timestamp=1.0)
+            raise asyncio.CancelledError()
+
+        with patch("bmad_orch.providers.claude.spawn_pty_process", side_effect=mock_spawn):
+            with pytest.raises(asyncio.CancelledError):
                 async for _ in adapter.execute("test prompt"):
                     pass
 
