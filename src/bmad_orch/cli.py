@@ -1,10 +1,10 @@
 import hashlib
-import json
 import pathlib
 import subprocess
 import sys
 import time
 import traceback
+import uuid
 from typing import Annotated, Literal
 
 import typer
@@ -22,7 +22,7 @@ from bmad_orch.config import (
 from bmad_orch.exceptions import BmadOrchError, ConfigError, ConfigProviderError, StateError
 from bmad_orch.rendering.summary import render_playbook_summary
 from bmad_orch.engine.runner import Runner
-from bmad_orch.state.schema import OrchestratorState
+from bmad_orch.state import StateManager, RunState
 
 app = typer.Typer(help="BMAD Orchestrator - End-to-end automated story execution.")
 
@@ -165,17 +165,17 @@ def start(
     config_hash = get_config_hash(source_path)
     state_path = source_path.parent / "bmad-orch-state.json"
     
-    first_run = not state_path.exists()
-    config_changed = False
-    if not first_run:
-        try:
-            with open(state_path, "r") as f:
-                state_data = json.load(f)
-                old_hash = state_data.get("config_hash")
-                if old_hash != config_hash:
-                    config_changed = True
-        except Exception:
-            first_run = True
+    # AC8: Use StateManager.load for state discovery, loading, and validation
+    try:
+        state = StateManager.load(state_path, expected_hash=config_hash)
+        # config_changed = state.config_hash != config_hash  # StateManager.load already warns
+        first_run = not state_path.exists() or not state.run_history
+        config_changed = state.config_hash != config_hash
+    except StateError as e:
+        error_console.print(f"[yellow]Warning: Previous state file issue: {e}. Starting fresh state.[/yellow]")
+        state = RunState(run_id=str(uuid.uuid4()), config_hash=config_hash)
+        first_run = True
+        config_changed = False
 
     # Pre-flight logic
     if dry_run:
@@ -218,12 +218,11 @@ def start(
         if action == "quit":
             raise typer.Exit(code=130)
 
-    # Save state with config hash
-    state = OrchestratorState(config_hash=config_hash)
+    # Save state with config hash (atomic write via StateManager)
+    state = RunState(run_id=str(uuid.uuid4()), config_hash=config_hash)
     try:
-        with open(state_path, "w") as f:
-            json.dump(state.model_dump(), f)
-    except OSError as e:
+        StateManager.save(state, state_path)
+    except StateError as e:
         error_console.print(f"[red]Warning: Could not save state file: {e}[/red]")
 
     # Initialize and run

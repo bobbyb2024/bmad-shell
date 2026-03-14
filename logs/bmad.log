@@ -1,0 +1,226 @@
+[2026-03-14T19:44:47.645665Z] [INFO ] [level=info] stdlib message
+[2026-03-14T19:45:05.358509Z] [INFO ] [key=value _record=<LogRecord: test_logging, 20, /home/bobby/bmad-shell/tests/test_logging.py, 22, "{'key': 'value', 'event': 'test message', 'level': 'info'}"> _from_structlog=True] test message
+[2026-03-14T19:45:05.359639Z] [INFO ] [step_id=123 _record=<LogRecord: test_logging, 20, /home/bobby/bmad-shell/tests/test_logging.py, 34, "{'step_id': '123', 'event': 'machine test', 'level': 'info'}"> _from_structlog=True] machine test
+[2026-03-14T19:45:05.363046Z] [INFO ] [_record=<LogRecord: test_stdlib, 20, /home/bobby/bmad-shell/tests/test_logging.py, 77, "stdlib message"> _from_structlog=False] stdlib message
+[2026-03-14T19:45:36.725717Z] [INFO ] [key=value source=test_logging] test message
+[2026-03-14T19:45:36.726841Z] [INFO ] [step_id=123 source=test_logging] machine test
+[2026-03-14T19:46:00.485707Z] [INFO ] [key=value source=test_logging] test message
+[2026-03-14T19:46:00.486836Z] [INFO ] [step_id=123 source=test_logging] machine test
+[2026-03-14T19:46:00.594266Z] [INFO ] [step_id=step-1 provider_name=claude source=test_logging] step log
+[2026-03-14T19:46:00.602281Z] [INFO ] [step_id=step-1 source=test_logging] msg 1
+[2026-03-14T19:46:00.602393Z] [INFO ] [step_id=step-2 source=test_logging] msg 2
+[2026-03-14T19:46:00.602493Z] [INFO ] [step_id=step-3 source=test_logging] msg 0
+[2026-03-14T19:46:00.602580Z] [INFO ] [step_id=step-3 source=test_logging] msg 1
+[2026-03-14T19:46:00.602663Z] [INFO ] [step_id=step-3 source=test_logging] msg 2
+[2026-03-14T19:46:00.602753Z] [INFO ] [step_id=step-3 source=test_logging] msg 3
+[2026-03-14T19:46:00.602847Z] [INFO ] [step_id=step-3 source=test_logging] msg 4
+[2026-03-14T19:46:00.602932Z] [INFO ] [step_id=step-3 source=test_logging] msg 5
+[2026-03-14T19:46:00.603015Z] [INFO ] [step_id=step-3 source=test_logging] msg 6
+[2026-03-14T19:46:00.603098Z] [INFO ] [step_id=step-3 source=test_logging] msg 7
+[2026-03-14T19:46:00.603183Z] [INFO ] [step_id=step-3 source=test_logging] msg 8
+[2026-03-14T19:46:00.603264Z] [INFO ] [step_id=step-3 source=test_logging] msg 9
+[2026-03-14T19:46:00.603344Z] [INFO ] [step_id=step-3 source=test_logging] msg 10
+[2026-03-14T19:46:00.606687Z] [INFO ] [step_id=step-100 source=test_src] test log
+[2026-03-14T19:46:32.086827Z] [INFO ] [key=value source=test_logging] test message
+[2026-03-14T19:46:32.088132Z] [INFO ] [step_id=123 source=test_logging] machine test
+[2026-03-14T19:46:32.195573Z] [INFO ] [step_id=step-1 provider_name=claude source=test_logging] step log
+[2026-03-14T19:46:32.196548Z] [INFO ] [step_id=step-1 source=test_logging] msg 1
+[2026-03-14T19:46:32.196678Z] [INFO ] [step_id=step-2 source=test_logging] msg 2
+[2026-03-14T19:46:32.196776Z] [INFO ] [step_id=step-3 source=test_logging] msg 0
+[2026-03-14T19:46:32.196863Z] [INFO ] [step_id=step-3 source=test_logging] msg 1
+[2026-03-14T19:46:32.196942Z] [INFO ] [step_id=step-3 source=test_logging] msg 2
+[2026-03-14T19:46:32.197020Z] [INFO ] [step_id=step-3 source=test_logging] msg 3
+[2026-03-14T19:46:32.197100Z] [INFO ] [step_id=step-3 source=test_logging] msg 4
+[2026-03-14T19:46:32.197179Z] [INFO ] [step_id=step-3 source=test_logging] msg 5
+[2026-03-14T19:46:32.197258Z] [INFO ] [step_id=step-3 source=test_logging] msg 6
+[2026-03-14T19:46:32.197337Z] [INFO ] [step_id=step-3 source=test_logging] msg 7
+[2026-03-14T19:46:32.197415Z] [INFO ] [step_id=step-3 source=test_logging] msg 8
+[2026-03-14T19:46:32.197502Z] [INFO ] [step_id=step-4 source=test_logging] msg step 4
+[2026-03-14T19:46:32.198379Z] [INFO ] [step_id=step-100 source=test_src] test log
+2026-03-14T19:46:53.571419Z INFO  [key=value source=test_logging] test message
+2026-03-14T19:46:53.572693Z INFO  [step_id=123 source=test_logging] machine test
+2026-03-14T19:46:53.680130Z INFO  [step_id=step-1 provider_name=claude source=test_logging] step log
+2026-03-14T19:46:53.681085Z INFO  [step_id=step-1 source=test_logging] msg 1
+2026-03-14T19:46:53.681214Z INFO  [step_id=step-2 source=test_logging] msg 2
+2026-03-14T19:46:53.681305Z INFO  [step_id=step-3 source=test_logging] msg 0
+2026-03-14T19:46:53.681397Z INFO  [step_id=step-3 source=test_logging] msg 1
+2026-03-14T19:46:53.681477Z INFO  [step_id=step-3 source=test_logging] msg 2
+2026-03-14T19:46:53.681556Z INFO  [step_id=step-3 source=test_logging] msg 3
+2026-03-14T19:46:53.681635Z INFO  [step_id=step-3 source=test_logging] msg 4
+2026-03-14T19:46:53.681713Z INFO  [step_id=step-3 source=test_logging] msg 5
+2026-03-14T19:46:53.681793Z INFO  [step_id=step-3 source=test_logging] msg 6
+2026-03-14T19:46:53.681869Z INFO  [step_id=step-3 source=test_logging] msg 7
+2026-03-14T19:46:53.681947Z INFO  [step_id=step-3 source=test_logging] msg 8
+2026-03-14T19:46:53.682034Z INFO  [step_id=step-4 source=test_logging] msg step 4
+2026-03-14T19:46:53.682896Z INFO  [step_id=step-100 source=test_src] test log
+2026-03-14T19:47:03.833259Z INFO  [key=value source=test_logging] test message
+2026-03-14T19:47:03.834561Z INFO  [step_id=123 source=test_logging] machine test
+2026-03-14T19:47:03.941865Z INFO  [step_id=step-1 provider_name=claude source=test_logging] step log
+2026-03-14T19:47:03.942822Z INFO  [step_id=step-1 source=test_logging] msg 1
+2026-03-14T19:47:03.942949Z INFO  [step_id=step-2 source=test_logging] msg 2
+2026-03-14T19:47:03.943041Z INFO  [step_id=step-3 source=test_logging] msg 0
+2026-03-14T19:47:03.943131Z INFO  [step_id=step-3 source=test_logging] msg 1
+2026-03-14T19:47:03.943211Z INFO  [step_id=step-3 source=test_logging] msg 2
+2026-03-14T19:47:03.943290Z INFO  [step_id=step-3 source=test_logging] msg 3
+2026-03-14T19:47:03.943370Z INFO  [step_id=step-3 source=test_logging] msg 4
+2026-03-14T19:47:03.943449Z INFO  [step_id=step-3 source=test_logging] msg 5
+2026-03-14T19:47:03.943526Z INFO  [step_id=step-3 source=test_logging] msg 6
+2026-03-14T19:47:03.943607Z INFO  [step_id=step-3 source=test_logging] msg 7
+2026-03-14T19:47:03.943686Z INFO  [step_id=step-3 source=test_logging] msg 8
+2026-03-14T19:47:03.943777Z INFO  [step_id=step-4 source=test_logging] msg step 4
+2026-03-14T19:47:03.944661Z INFO  [step_id=step-100 source=test_src] test log
+2026-03-14T19:47:21.620087Z INFO  [key=value source=test_logging] test message
+2026-03-14T19:47:21.621396Z INFO  [step_id=123 source=test_logging] machine test
+2026-03-14T19:47:21.728834Z INFO  [step_id=step-1 provider_name=claude source=test_logging] step log
+2026-03-14T19:47:21.729826Z INFO  [step_id=step-1 source=test_logging] msg 1
+2026-03-14T19:47:21.729953Z INFO  [step_id=step-2 source=test_logging] msg 2
+2026-03-14T19:47:21.730042Z INFO  [step_id=step-3 source=test_logging] msg 0
+2026-03-14T19:47:21.730127Z INFO  [step_id=step-3 source=test_logging] msg 1
+2026-03-14T19:47:21.730207Z INFO  [step_id=step-3 source=test_logging] msg 2
+2026-03-14T19:47:21.730293Z INFO  [step_id=step-3 source=test_logging] msg 3
+2026-03-14T19:47:21.730374Z INFO  [step_id=step-3 source=test_logging] msg 4
+2026-03-14T19:47:21.730451Z INFO  [step_id=step-3 source=test_logging] msg 5
+2026-03-14T19:47:21.730529Z INFO  [step_id=step-3 source=test_logging] msg 6
+2026-03-14T19:47:21.730604Z INFO  [step_id=step-3 source=test_logging] msg 7
+2026-03-14T19:47:21.730679Z INFO  [step_id=step-3 source=test_logging] msg 8
+2026-03-14T19:47:21.730794Z INFO  [step_id=step-4 source=test_logging] msg step 4
+2026-03-14T19:47:21.731655Z INFO  [step_id=step-100 source=test_src] test log
+2026-03-14T19:49:19.704346Z INFO  [key=value source=test_logging] test message
+2026-03-14T19:49:19.705677Z INFO  [step_id=123 source=test_logging] machine test
+2026-03-14T19:49:19.813414Z INFO  [step_id=step-1 provider_name=claude source=test_logging] step log
+2026-03-14T19:49:19.814388Z INFO  [step_id=step-1 source=test_logging] msg 1
+2026-03-14T19:49:19.814511Z INFO  [step_id=step-2 source=test_logging] msg 2
+2026-03-14T19:49:19.814601Z INFO  [step_id=step-3 source=test_logging] msg 0
+2026-03-14T19:49:19.814691Z INFO  [step_id=step-3 source=test_logging] msg 1
+2026-03-14T19:49:19.814782Z INFO  [step_id=step-3 source=test_logging] msg 2
+2026-03-14T19:49:19.814861Z INFO  [step_id=step-3 source=test_logging] msg 3
+2026-03-14T19:49:19.814937Z INFO  [step_id=step-3 source=test_logging] msg 4
+2026-03-14T19:49:19.815020Z INFO  [step_id=step-3 source=test_logging] msg 5
+2026-03-14T19:49:19.815098Z INFO  [step_id=step-3 source=test_logging] msg 6
+2026-03-14T19:49:19.815173Z INFO  [step_id=step-3 source=test_logging] msg 7
+2026-03-14T19:49:19.815247Z INFO  [step_id=step-3 source=test_logging] msg 8
+2026-03-14T19:49:19.815333Z INFO  [step_id=step-4 source=test_logging] msg step 4
+2026-03-14T19:49:19.816243Z INFO  [step_id=step-100 source=test_src] test log
+2026-03-14T19:51:46.165189Z INFO  [key=value source=test_logging] test message
+2026-03-14T19:51:46.166493Z INFO  [step_id=123 source=test_logging] machine test
+2026-03-14T19:51:46.169196Z INFO  [source=bmad_orch] stdlib bridge message
+2026-03-14T19:51:46.170237Z DEBUG [source=bmad_orch] Using selector: EpollSelector
+2026-03-14T19:51:46.174517Z DEBUG [source=bmad_orch] Using selector: EpollSelector
+2026-03-14T19:51:46.279493Z INFO  [step_id=step-1 provider_name=claude source=test_logging] step log
+2026-03-14T19:51:46.280463Z INFO  [step_id=ctx-step provider_name=gemini source=test_logging] contextvar step log
+2026-03-14T19:51:46.281380Z INFO  [step_id=step-1 source=test_logging] msg 1
+2026-03-14T19:51:46.281510Z INFO  [step_id=step-2 source=test_logging] msg 2
+2026-03-14T19:51:46.281604Z INFO  [step_id=step-3 source=test_logging] msg 0
+2026-03-14T19:51:46.281689Z INFO  [step_id=step-3 source=test_logging] msg 1
+2026-03-14T19:51:46.281778Z INFO  [step_id=step-3 source=test_logging] msg 2
+2026-03-14T19:51:46.281865Z INFO  [step_id=step-3 source=test_logging] msg 3
+2026-03-14T19:51:46.281948Z INFO  [step_id=step-3 source=test_logging] msg 4
+2026-03-14T19:51:46.282027Z INFO  [step_id=step-3 source=test_logging] msg 5
+2026-03-14T19:51:46.282106Z INFO  [step_id=step-3 source=test_logging] msg 6
+2026-03-14T19:51:46.282184Z INFO  [step_id=step-3 source=test_logging] msg 7
+2026-03-14T19:51:46.282261Z INFO  [step_id=step-3 source=test_logging] msg 8
+2026-03-14T19:51:46.282353Z INFO  [step_id=step-4 source=test_logging] msg step 4
+2026-03-14T19:51:46.283221Z INFO  [step_id=step-100 source=test_src] test log
+2026-03-14T19:54:53.570058Z INFO  [key=value source=test_logging] test message
+2026-03-14T19:54:53.571397Z INFO  [step_id=123 source=test_logging] machine test
+2026-03-14T19:54:53.574071Z INFO  [source=bmad_orch] stdlib bridge message
+2026-03-14T19:54:53.575082Z DEBUG [source=bmad_orch] Using selector: EpollSelector
+2026-03-14T19:54:53.577743Z DEBUG [source=bmad_orch] Using selector: EpollSelector
+2026-03-14T19:54:53.683457Z INFO  [step_id=step-1 provider_name=claude source=test_logging] step log
+2026-03-14T19:54:53.684415Z INFO  [provider_name=gemini step_id=ctx-step source=test_logging] contextvar step log
+2026-03-14T19:54:53.685319Z INFO  [step_id=step-1 source=test_logging] msg 1
+2026-03-14T19:54:53.685449Z INFO  [step_id=step-2 source=test_logging] msg 2
+2026-03-14T19:54:53.685544Z INFO  [step_id=step-3 source=test_logging] msg 0
+2026-03-14T19:54:53.685631Z INFO  [step_id=step-3 source=test_logging] msg 1
+2026-03-14T19:54:53.685713Z INFO  [step_id=step-3 source=test_logging] msg 2
+2026-03-14T19:54:53.685804Z INFO  [step_id=step-3 source=test_logging] msg 3
+2026-03-14T19:54:53.685891Z INFO  [step_id=step-3 source=test_logging] msg 4
+2026-03-14T19:54:53.685970Z INFO  [step_id=step-3 source=test_logging] msg 5
+2026-03-14T19:54:53.686047Z INFO  [step_id=step-3 source=test_logging] msg 6
+2026-03-14T19:54:53.686124Z INFO  [step_id=step-3 source=test_logging] msg 7
+2026-03-14T19:54:53.686200Z INFO  [step_id=step-3 source=test_logging] msg 8
+2026-03-14T19:54:53.686297Z INFO  [step_id=step-4 source=test_logging] msg step 4
+2026-03-14T19:54:53.687172Z INFO  [step_id=step-100 source=test_src provider_name=claude] test log
+2026-03-14T19:56:37.978846Z INFO  [key=value source=test_logging] test message
+2026-03-14T19:56:37.980142Z INFO  [step_id=123 source=test_logging] machine test
+2026-03-14T19:56:37.982816Z INFO  [source=bmad_orch] stdlib bridge message
+2026-03-14T19:56:37.983816Z DEBUG [source=bmad_orch] Using selector: EpollSelector
+2026-03-14T19:56:37.986464Z DEBUG [source=bmad_orch] Using selector: EpollSelector
+2026-03-14T19:56:38.091555Z INFO  [step_id=step-1 provider_name=claude source=test_logging] step log
+2026-03-14T19:56:38.092517Z INFO  [step_id=ctx-step provider_name=gemini source=test_logging] contextvar step log
+2026-03-14T19:56:38.093447Z INFO  [step_id=step-1 source=test_logging] msg 1
+2026-03-14T19:56:38.093577Z INFO  [step_id=step-2 source=test_logging] msg 2
+2026-03-14T19:56:38.093668Z INFO  [step_id=step-3 source=test_logging] msg 0
+2026-03-14T19:56:38.093762Z INFO  [step_id=step-3 source=test_logging] msg 1
+2026-03-14T19:56:38.093845Z INFO  [step_id=step-3 source=test_logging] msg 2
+2026-03-14T19:56:38.093925Z INFO  [step_id=step-3 source=test_logging] msg 3
+2026-03-14T19:56:38.094005Z INFO  [step_id=step-3 source=test_logging] msg 4
+2026-03-14T19:56:38.094086Z INFO  [step_id=step-3 source=test_logging] msg 5
+2026-03-14T19:56:38.094164Z INFO  [step_id=step-3 source=test_logging] msg 6
+2026-03-14T19:56:38.094241Z INFO  [step_id=step-3 source=test_logging] msg 7
+2026-03-14T19:56:38.094318Z INFO  [step_id=step-3 source=test_logging] msg 8
+2026-03-14T19:56:38.094413Z INFO  [step_id=step-4 source=test_logging] msg step 4
+2026-03-14T19:56:38.095309Z INFO  [step_id=step-100 source=test_src provider_name=claude] test log
+2026-03-14T20:00:20.190597Z INFO  [key=value source=test_logging] test message
+2026-03-14T20:00:20.191866Z INFO  [step_id=123 source=test_logging] machine test
+2026-03-14T20:00:20.194496Z INFO  [source=bmad_orch] stdlib bridge message
+2026-03-14T20:00:20.195519Z DEBUG [source=bmad_orch] Using selector: EpollSelector
+2026-03-14T20:00:20.198126Z DEBUG [source=bmad_orch] Using selector: EpollSelector
+2026-03-14T20:00:20.303210Z INFO  [step_id=step-1 provider_name=claude source=test_logging] step log
+2026-03-14T20:00:20.304162Z INFO  [step_id=ctx-step provider_name=gemini source=test_logging] contextvar step log
+2026-03-14T20:00:20.305068Z INFO  [step_id=step-1 source=test_logging] msg 1
+2026-03-14T20:00:20.305189Z INFO  [step_id=step-2 source=test_logging] msg 2
+2026-03-14T20:00:20.305272Z INFO  [step_id=step-3 source=test_logging] msg 0
+2026-03-14T20:00:20.305348Z INFO  [step_id=step-3 source=test_logging] msg 1
+2026-03-14T20:00:20.305420Z INFO  [step_id=step-3 source=test_logging] msg 2
+2026-03-14T20:00:20.305493Z INFO  [step_id=step-3 source=test_logging] msg 3
+2026-03-14T20:00:20.305566Z INFO  [step_id=step-3 source=test_logging] msg 4
+2026-03-14T20:00:20.305635Z INFO  [step_id=step-3 source=test_logging] msg 5
+2026-03-14T20:00:20.305701Z INFO  [step_id=step-3 source=test_logging] msg 6
+2026-03-14T20:00:20.305778Z INFO  [step_id=step-3 source=test_logging] msg 7
+2026-03-14T20:00:20.305844Z INFO  [step_id=step-3 source=test_logging] msg 8
+2026-03-14T20:00:20.305930Z INFO  [step_id=step-4 source=test_logging] msg step 4
+2026-03-14T20:00:20.306867Z INFO  [step_id=std-step provider_name=test source=bmad_orch] stdlib step message
+2026-03-14T20:00:20.307700Z INFO  [step_id=step-100 source=test_src provider_name=claude] test log
+2026-03-14T20:01:33.096781Z INFO  [key=value source=test_logging] test message
+2026-03-14T20:01:33.098116Z INFO  [step_id=123 source=test_logging] machine test
+2026-03-14T20:01:33.100801Z INFO  [source=bmad_orch] stdlib bridge message
+2026-03-14T20:01:33.101928Z DEBUG [source=bmad_orch] Using selector: EpollSelector
+2026-03-14T20:01:33.104401Z DEBUG [source=bmad_orch] Using selector: EpollSelector
+2026-03-14T20:01:33.209346Z INFO  [step_id=step-1 provider_name=claude source=test_logging] step log
+2026-03-14T20:01:33.210313Z INFO  [step_id=ctx-step provider_name=gemini source=test_logging] contextvar step log
+2026-03-14T20:01:33.211227Z INFO  [step_id=step-1 source=test_logging] msg 1
+2026-03-14T20:01:33.211341Z INFO  [step_id=step-2 source=test_logging] msg 2
+2026-03-14T20:01:33.211422Z INFO  [step_id=step-3 source=test_logging] msg 0
+2026-03-14T20:01:33.211495Z INFO  [step_id=step-3 source=test_logging] msg 1
+2026-03-14T20:01:33.211567Z INFO  [step_id=step-3 source=test_logging] msg 2
+2026-03-14T20:01:33.211637Z INFO  [step_id=step-3 source=test_logging] msg 3
+2026-03-14T20:01:33.211711Z INFO  [step_id=step-3 source=test_logging] msg 4
+2026-03-14T20:01:33.211791Z INFO  [step_id=step-3 source=test_logging] msg 5
+2026-03-14T20:01:33.211866Z INFO  [step_id=step-3 source=test_logging] msg 6
+2026-03-14T20:01:33.211936Z INFO  [step_id=step-3 source=test_logging] msg 7
+2026-03-14T20:01:33.212002Z INFO  [step_id=step-3 source=test_logging] msg 8
+2026-03-14T20:01:33.212084Z INFO  [step_id=step-4 source=test_logging] msg step 4
+2026-03-14T20:01:33.213015Z INFO  [step_id=std-step provider_name=test source=bmad_orch] stdlib step message
+2026-03-14T20:01:33.213877Z INFO  [step_id=step-100 source=test_src provider_name=claude] test log
+2026-03-14T20:02:36.372611Z INFO  [key=value source=test_logging] test message
+2026-03-14T20:02:36.373910Z INFO  [step_id=123 source=test_logging] machine test
+2026-03-14T20:02:36.376544Z INFO  [source=bmad_orch] stdlib bridge message
+2026-03-14T20:02:36.377546Z DEBUG [source=bmad_orch] Using selector: EpollSelector
+2026-03-14T20:02:36.380171Z DEBUG [source=bmad_orch] Using selector: EpollSelector
+2026-03-14T20:02:36.485214Z INFO  [step_id=step-1 provider_name=claude extra_ctx=val source=test_logging] step log
+2026-03-14T20:02:36.486166Z INFO  [provider_name=gemini step_id=ctx-step source=test_logging] contextvar step log
+2026-03-14T20:02:36.487039Z INFO  [step_id=step-1 source=test_logging] msg 1
+2026-03-14T20:02:36.487157Z INFO  [step_id=step-2 source=test_logging] msg 2
+2026-03-14T20:02:36.487242Z INFO  [step_id=step-3 source=test_logging] msg 0
+2026-03-14T20:02:36.487320Z INFO  [step_id=step-3 source=test_logging] msg 1
+2026-03-14T20:02:36.487392Z INFO  [step_id=step-3 source=test_logging] msg 2
+2026-03-14T20:02:36.487465Z INFO  [step_id=step-3 source=test_logging] msg 3
+2026-03-14T20:02:36.487535Z INFO  [step_id=step-3 source=test_logging] msg 4
+2026-03-14T20:02:36.487606Z INFO  [step_id=step-3 source=test_logging] msg 5
+2026-03-14T20:02:36.487676Z INFO  [step_id=step-3 source=test_logging] msg 6
+2026-03-14T20:02:36.487751Z INFO  [step_id=step-3 source=test_logging] msg 7
+2026-03-14T20:02:36.487817Z INFO  [step_id=step-3 source=test_logging] msg 8
+2026-03-14T20:02:36.487905Z INFO  [step_id=step-4 source=test_logging] msg step 4
+2026-03-14T20:02:36.488833Z INFO  [provider_name=test step_id=std-step source=bmad_orch] stdlib step message
+2026-03-14T20:02:36.489660Z INFO  [step_id=step-100 source=test_src provider_name=claude extra=val] test log

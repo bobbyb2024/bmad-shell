@@ -2,7 +2,7 @@ import pathlib
 from typing import Optional
 
 from bmad_orch.config.schema import OrchestratorConfig
-from bmad_orch.state.schema import OrchestratorState
+from bmad_orch.state.schema import RunState
 
 class Runner:
     """The core engine that executes the orchestration plan."""
@@ -11,7 +11,7 @@ class Runner:
         self.config = config
         self.state_path = state_path
         # If state_path is None, the runner should operate in-memory without persistence (Task 3.1)
-        self.state: Optional[OrchestratorState] = None
+        self.state: Optional[RunState] = None
 
     def run(self, dry_run: bool = False) -> None:
         """Execute the orchestration plan.
