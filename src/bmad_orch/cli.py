@@ -5,6 +5,7 @@ import sys
 import time
 import traceback
 import uuid
+import asyncio
 from typing import Annotated, Literal
 
 import typer
@@ -227,7 +228,7 @@ def start(
 
     # Initialize and run
     runner = Runner(config=cfg, state_path=state_path)
-    runner.run(dry_run=False)
+    asyncio.run(runner.run(dry_run=False))
 
 @app.command()
 def resume(

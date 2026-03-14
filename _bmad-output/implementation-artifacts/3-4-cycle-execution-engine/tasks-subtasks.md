@@ -1,0 +1,26 @@
+# Tasks / Subtasks
+
+- [x] Task 1: Implement Cycle Engine Core (AC: 1, 2, 3, 11, 12)
+  - [x] 1.1: Create `src/bmad_orch/engine/cycle.py` with `CycleExecutor` class.
+  - [x] 1.2: Implement `async execute_cycle(cycle_id: str, cycle_config: CycleConfig, state: RunState, template_context: Mapping[str, str]) -> RunState`.
+  - [x] 1.3: Implement the loop for `repeat` (N total iterations). Iteration 0 runs generative+validation, index 1..N-1 runs validation only. Handle `repeat <= 0`, empty step lists, and generative-only cycles on repetitions as errors.
+  - [x] 1.4: Before executing each step, validate that `step.provider` key exists AND has a non-empty `name`.
+- [x] Task 2: Integrate Support Subsystems (AC: 6, 7, 8, 9, 10)
+  - [x] 2.1: Integrate `EventEmitter` to emit all required events. Ensure `StepStarted` and `StepCompleted` use `step_name` (matching the field name in `events.py`).
+  - [x] 2.2: Integrate `StateManager`. Use `StepOutcome("success")` or `StepOutcome("failure")` from `bmad_orch.types`. Engine is responsible for providing the current UTC timestamp to `record_step`. `StepRecord` must include `step_id`, `provider_name`, `outcome`, and `timestamp`. **Important:** `record_step()` returns a new `RunState` — the engine MUST capture and use the returned value (e.g., `state = state_manager.record_step(state, cycle_id, step_record)`).
+  - [x] 2.3: Integrate `TemplateResolver` (imported from `bmad_orch.engine.resolver`). Handle `ConfigError` per AC8/AC10.
+  - [x] 2.4: Use `structlog` with `bind_contextvars`. Generate `step_name` as `{step.skill}_{step_index}`. Use nested `try/finally` blocks: outer for cycle-level context (`cycle_id`) cleared via `unbind_contextvars("cycle_id")`, inner for step-level context (`step_name`, `provider_name`) cleared via `unbind_contextvars("step_name", "provider_name")`.
+- [x] Task 3: Implement Timing & Pauses (AC: 4, 5)
+  - [x] 3.1: Use `asyncio.sleep()`. Logic must prevent `pause_between_steps` after the last step and `pause_between_cycles` after the last repetition.
+- [x] Task 4: Update Runner Integration
+  - [x] 4.1: Update `src/bmad_orch/engine/runner.py` to instantiate `CycleExecutor(emitter, state_manager, template_resolver, config, state_path)` and call `await executor.execute_cycle(cycle_id, cycle_config, state, template_context)` for each cycle. The runner must ensure `EventEmitter`, `StateManager`, and `TemplateResolver` are properly initialized and passed to the executor. Map the returned `RunState` back into the runner's state. Determine cycle failure by inspecting the last `CycleRecord` in the returned `RunState.run_history` (not via a `status` field). Handle failure to decide whether to continue or abort remaining cycles.
+- [x] Task 5: Unit Testing (AC: 1-12)
+  - [x] 5.1: Create `tests/test_engine/test_cycle.py`.
+  - [x] 5.2: Mock dependencies to verify call sequences.
+  - [x] 5.3: Verify step type logic (generative vs validation).
+  - [x] 5.4: Test error paths and mandatory `CycleCompleted` emission on failure.
+  - [x] 5.5: Test edge cases: `repeat=0`, empty step list, generative-only cycles on repetitions.
+  - [x] 5.6: Test invalid provider index or missing name triggers AC12 failure protocol.
+  - [x] 5.7: Test template resolution failure triggers AC8/AC10 failure protocol.
+  - [x] 5.8: Verify `record_step` return value is captured and used (state is not stale after recording).
+  - [x] 5.9: Verify inner step `finally` uses `unbind_contextvars` (not `clear_contextvars`) — cycle-level context (`cycle_id`) must survive step teardown.

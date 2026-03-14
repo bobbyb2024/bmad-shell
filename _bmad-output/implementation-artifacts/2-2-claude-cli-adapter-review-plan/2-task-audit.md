@@ -1,0 +1,11 @@
+# 2. Task Audit
+- [x] Task 1.1: Create `src/bmad_orch/providers/claude.py` - Done.
+- [x] Task 1.2: Implement `detect()` with caching - Done (but can be improved to use `path`).
+- [ ] Task 1.3: Implement `list_models()` with error handling - **NOT DONE**. Only fallback is implemented.
+- [x] Task 1.4: Register `ClaudeAdapter` - Done.
+- [x] Task 2.1: Implement `execute()` delegating to `spawn_pty_process` - Done.
+- [x] Task 2.2: Extend `spawn_pty_process` for `env` - Done.
+- [x] Task 2.3: Pass `ANTHROPIC_API_KEY` via `env` - Done.
+- [x] Task 2.4: Defensive output validation - Done.
+- [x] Task 2.5: Graceful cancellation - Done.
+- [x] Task 3.1-3.5: Write tests - Done (but missing binary check and grace period test).

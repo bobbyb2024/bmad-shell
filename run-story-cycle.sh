@@ -16,8 +16,11 @@ set -euo pipefail
 # On any error, execution halts and waits for human intervention.
 #
 # Usage:
-#   ./run-story-cycle.sh              # process all remaining backlog stories
-#   ./run-story-cycle.sh [story-key]  # process a single story
+#   ./run-story-cycle.sh                    # process all (prompts to resume if applicable)
+#   ./run-story-cycle.sh --resume           # auto-resume without prompting
+#   ./run-story-cycle.sh --fresh            # start fresh, discard any saved progress
+#   ./run-story-cycle.sh [story-key]        # process a single story from step 1
+#   ./run-story-cycle.sh [story-key] --resume  # resume a specific story
 # ============================================================================
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -25,12 +28,129 @@ SPRINT_STATUS="_bmad-output/implementation-artifacts/sprint-status.yaml"
 STORY_DIR="_bmad-output/implementation-artifacts"
 STEP_TIMEOUT=1800  # 30 minutes per CLI invocation
 PIDFILE="${SCRIPT_DIR}/.story-cycle-step.pid"
+PROGRESS_FILE="${SCRIPT_DIR}/.story-cycle-progress"
+
+# --- Parse flags ---
+RESUME_MODE=""  # "auto", "fresh", or "" (prompt)
+STORY_ARG=""
+for arg in "$@"; do
+  case "$arg" in
+    --resume)   RESUME_MODE="auto" ;;
+    --fresh|--no-resume) RESUME_MODE="fresh" ;;
+    --help|-h)
+      echo "Usage: ./run-story-cycle.sh [options] [story-key]"
+      echo ""
+      echo "Options:"
+      echo "  --resume       Auto-resume from last checkpoint (no prompt)"
+      echo "  --fresh        Start fresh, discard saved progress"
+      echo "  --no-resume    Alias for --fresh"
+      echo "  -h, --help     Show this help"
+      echo ""
+      echo "Examples:"
+      echo "  ./run-story-cycle.sh                  # prompts if progress exists"
+      echo "  ./run-story-cycle.sh --resume         # auto-resume"
+      echo "  ./run-story-cycle.sh --fresh          # ignore progress, start over"
+      echo "  ./run-story-cycle.sh 3-4-cycle-engine # run single story"
+      exit 0
+      ;;
+    -*)
+      echo "Unknown flag: $arg (try --help)"
+      exit 1
+      ;;
+    *)  STORY_ARG="$arg" ;;
+  esac
+done
 
 # Clean up pidfile on exit
 cleanup_pidfile() {
   rm -f "$PIDFILE"
 }
 trap cleanup_pidfile EXIT
+
+# --- Progress tracking ---
+# Writes: story_key, step_number, step_label, timestamp
+save_progress() {
+  local story_key="$1" step_num="$2" step_label="$3"
+  cat > "$PROGRESS_FILE" <<EOF
+story_key="$story_key"
+step_completed="$step_num"
+step_label="$step_label"
+timestamp="$(date '+%Y-%m-%d %H:%M:%S')"
+started="$(date '+%Y-%m-%d %H:%M:%S')"
+EOF
+}
+
+clear_progress() {
+  rm -f "$PROGRESS_FILE"
+}
+
+# Returns the step number to resume FROM (the next step after last completed)
+# Sets RESUME_STORY and RESUME_STEP globals. Returns 1 if no resume.
+# Respects RESUME_MODE: "auto" (skip prompt), "fresh" (discard), "" (prompt).
+check_resume() {
+  RESUME_STORY=""
+  RESUME_STEP=0
+
+  if [[ ! -f "$PROGRESS_FILE" ]]; then
+    return 1
+  fi
+
+  # --fresh: discard progress immediately
+  if [[ "$RESUME_MODE" == "fresh" ]]; then
+    echo "==> --fresh: discarding saved progress"
+    clear_progress
+    return 1
+  fi
+
+  local story_key step_completed step_label timestamp started
+  source "$PROGRESS_FILE"
+  RESUME_STORY="$story_key"
+  RESUME_STEP=$(( step_completed + 1 ))
+
+  echo ""
+  echo "╔════════════════════════════════════════════════════════════╗"
+  echo "  Previous session found:"
+  echo "  Story:     $story_key"
+  echo "  Completed: Step $step_completed — $step_label"
+  echo "  Time:      $timestamp"
+  echo "  Started:   $started"
+  echo "╚════════════════════════════════════════════════════════════╝"
+
+  # --resume: auto-resume without prompting
+  if [[ "$RESUME_MODE" == "auto" ]]; then
+    echo "==> --resume: resuming $story_key from step $RESUME_STEP"
+    return 0
+  fi
+
+  # Interactive prompt
+  echo ""
+  echo "  (r) Resume from step $RESUME_STEP"
+  echo "  (s) Start fresh (discard progress)"
+  echo "  (q) Quit"
+  echo ""
+  read -rp "Choice [r/s/q]: " choice
+  case "$choice" in
+    r|R|"")
+      echo "==> Resuming $story_key from step $RESUME_STEP..."
+      return 0
+      ;;
+    s|S)
+      echo "==> Starting fresh..."
+      clear_progress
+      RESUME_STORY=""
+      RESUME_STEP=0
+      return 1
+      ;;
+    q|Q)
+      echo "==> Quitting."
+      exit 0
+      ;;
+    *)
+      echo "==> Invalid choice. Quitting."
+      exit 1
+      ;;
+  esac
+}
 
 # --- Logging ---
 LOG_FILE=""
@@ -97,9 +217,12 @@ halt_on_error() {
 # --- Run a CLI step in a separate gnome-terminal window ---
 # Opens a visible terminal so you can watch output in real-time.
 # The main script waits for the command to finish, then reads the exit code.
+# Usage: run_step "label" "command" [story_key] [step_number]
 run_step() {
   local step_label="$1"
   local cmd_str="$2"
+  local story_key="${3:-}"
+  local step_num="${4:-0}"
 
   log ""
   log "────────────────────────────────────────────────────────────"
@@ -192,6 +315,11 @@ CMDEOF
   log ""
   log "  DONE: $step_label (${elapsed}s, exit 0)"
   log ""
+
+  # Save progress checkpoint
+  if [[ -n "$story_key" && "$step_num" -gt 0 ]]; then
+    save_progress "$story_key" "$step_num" "$step_label"
+  fi
 }
 
 # --- Helper: find the story file (tolerates naming variations) ---
@@ -307,8 +435,10 @@ Co-Authored-By: run-story-cycle.sh <automation@bmad>"
 }
 
 # --- Process a single story through the full lifecycle ---
+# Usage: process_story <story_key> [start_from_step]
 process_story() {
   local STORY_KEY="$1"
+  local START_STEP="${2:-1}"
   local TOTAL=11
 
   init_log "$STORY_KEY"
@@ -316,6 +446,9 @@ process_story() {
   log ""
   log "╔════════════════════════════════════════════════════════════╗"
   log "  STORY LIFECYCLE: $STORY_KEY"
+  if [[ "$START_STEP" -gt 1 ]]; then
+    log "  RESUMING from step $START_STEP"
+  fi
   log "╚════════════════════════════════════════════════════════════╝"
   log ""
 
@@ -323,9 +456,10 @@ process_story() {
   STORY_FILE=$(resolve_story_file "$STORY_KEY")
   if [[ -n "$STORY_FILE" ]]; then
     log "==> Story file already exists (ready-for-dev), skipping creation: $STORY_FILE"
-  else
+  elif [[ "$START_STEP" -le 1 ]]; then
     run_step "[1/${TOTAL}] Gemini: Create story ($STORY_KEY)" \
-      "gemini -y -p '/bmad-create-story Create story ${STORY_KEY}'"
+      "gemini -y -p '/bmad-create-story Create story ${STORY_KEY}'" \
+      "$STORY_KEY" 1
 
     STORY_FILE=$(resolve_story_file "$STORY_KEY")
     if [[ -z "$STORY_FILE" ]]; then
@@ -333,44 +467,82 @@ process_story() {
         "resolve_story_file ${STORY_KEY}" "1" "0"
     fi
     log "==> Story file created: $STORY_FILE"
+  else
+    STORY_FILE=$(resolve_story_file "$STORY_KEY")
+    if [[ -z "$STORY_FILE" ]]; then
+      halt_on_error "Resume failed — story file not found" \
+        "resolve_story_file ${STORY_KEY}" "1" "0"
+    fi
+    log "==> Story file (resumed): $STORY_FILE"
   fi
 
   # --- Phase 2: Adversarial Story Reviews (4 passes) ---
-  run_step "[2/${TOTAL}] Claude: Adversarial review (pass 1)" \
-    "claude --dangerously-skip-permissions --print --verbose --output-format stream-json -p 'bmad-review-adversarial-general Review the story file: ${STORY_FILE} — after the review, automatically apply all fixes directly to the file. Do not ask for confirmation, just make the edits.'"
+  if [[ "$START_STEP" -le 2 ]]; then
+    run_step "[2/${TOTAL}] Claude: Adversarial review (pass 1)" \
+      "claude --dangerously-skip-permissions --print --verbose --output-format stream-json -p 'bmad-review-adversarial-general Review the story file: ${STORY_FILE} — after the review, automatically apply all fixes directly to the file. Do not ask for confirmation, just make the edits.'" \
+      "$STORY_KEY" 2
+  fi
 
-  run_step "[3/${TOTAL}] Gemini: Adversarial review (pass 2)" \
-    "gemini -y -p '/bmad-review-adversarial-general Review the story file: ${STORY_FILE} — after the review, automatically apply all fixes directly to the file. Do not ask for confirmation, just make the edits.'"
+  if [[ "$START_STEP" -le 3 ]]; then
+    run_step "[3/${TOTAL}] Gemini: Adversarial review (pass 2)" \
+      "gemini --model=gemini-3.1-pro-preview -y -p '/bmad-review-adversarial-general Review the story file: ${STORY_FILE} — after the review, automatically apply all fixes directly to the file. Do not ask for confirmation, just make the edits.'" \
+      "$STORY_KEY" 3
+  fi
 
-  run_step "[4/${TOTAL}] Claude: Adversarial review (pass 3)" \
-    "claude --dangerously-skip-permissions --print --verbose --output-format stream-json -p '/bmad-review-adversarial-general Review the story file: ${STORY_FILE} — after the review, automatically apply all fixes directly to the file. Do not ask for confirmation, just make the edits.'"
+  if [[ "$START_STEP" -le 4 ]]; then
+    run_step "[4/${TOTAL}] Claude: Adversarial review (pass 3)" \
+      "claude --dangerously-skip-permissions --print --verbose --output-format stream-json -p '/bmad-review-adversarial-general Review the story file: ${STORY_FILE} — after the review, automatically apply all fixes directly to the file. Do not ask for confirmation, just make the edits.'" \
+      "$STORY_KEY" 4
+  fi
 
-  run_step "[5/${TOTAL}] Gemini: Adversarial review (pass 4)" \
-    "gemini -y -p '/bmad-review-adversarial-general Review the story file: ${STORY_FILE} — after the review, automatically apply all fixes directly to the file. Do not ask for confirmation, just make the edits.'"
+  if [[ "$START_STEP" -le 5 ]]; then
+    run_step "[5/${TOTAL}] Gemini: Adversarial review (pass 4)" \
+      "gemini --model=gemini-3.1-pro-preview -y -p '/bmad-review-adversarial-general Review the story file: ${STORY_FILE} — after the review, automatically apply all fixes directly to the file. Do not ask for confirmation, just make the edits.'" \
+      "$STORY_KEY" 5
+  fi
 
   # --- Phase 3: ATDD — Generate acceptance tests before implementation ---
-  run_step "[6/${TOTAL}] Claude: ATDD test generation ($STORY_KEY)" \
-    "claude --dangerously-skip-permissions --print --verbose --output-format stream-json -p '/bmad-testarch-atdd Generate failing acceptance tests for story: ${STORY_FILE}'"
+  if [[ "$START_STEP" -le 6 ]]; then
+    run_step "[6/${TOTAL}] Claude: ATDD test generation ($STORY_KEY)" \
+      "claude --dangerously-skip-permissions --print --verbose --output-format stream-json -p '/bmad-testarch-atdd Generate failing acceptance tests for story: ${STORY_FILE}'" \
+      "$STORY_KEY" 6
+  fi
 
   # --- Phase 4: Dev Story (Implementation) ---
-  run_step "[7/${TOTAL}] Gemini: Dev story ($STORY_KEY)" \
-    "gemini -y -p '/bmad-dev-story Implement story: ${STORY_FILE}'"
+  if [[ "$START_STEP" -le 7 ]]; then
+    run_step "[7/${TOTAL}] Gemini: Dev story ($STORY_KEY)" \
+      "gemini -y -p '/bmad-dev-story Implement story: ${STORY_FILE}'" \
+      "$STORY_KEY" 7
+  fi
 
   # --- Phase 5: Code Review Cycle (4 passes) ---
-  run_step "[8/${TOTAL}] Claude: Code review (pass 1)" \
-    "claude --dangerously-skip-permissions --print --verbose --output-format stream-json -p '/bmad-code-review Review code for story: ${STORY_FILE} — after the review, automatically apply all fixes to the code. Do not ask for confirmation, just make the edits.'"
+  if [[ "$START_STEP" -le 8 ]]; then
+    run_step "[8/${TOTAL}] Claude: Code review (pass 1)" \
+      "claude --dangerously-skip-permissions --print --verbose --output-format stream-json -p '/bmad-code-review Review code for story: ${STORY_FILE} — after the review, automatically apply all fixes to the code. Do not ask for confirmation, just make the edits.'" \
+      "$STORY_KEY" 8
+  fi
 
-  run_step "[9/${TOTAL}] Gemini: Code review (pass 2)" \
-    "gemini -y -p '/bmad-code-review Review code for story: ${STORY_FILE} — after the review, automatically apply all fixes to the code. Do not ask for confirmation, just make the edits.'"
+  if [[ "$START_STEP" -le 9 ]]; then
+    run_step "[9/${TOTAL}] Gemini: Code review (pass 2)" \
+      "gemini --model=gemini-3.1-pro-preview -y -p '/bmad-code-review Review code for story: ${STORY_FILE} — after the review, automatically apply all fixes to the code. Do not ask for confirmation, just make the edits.'" \
+      "$STORY_KEY" 9
+  fi
 
-  run_step "[10/${TOTAL}] Claude: Code review (pass 3)" \
-    "claude --dangerously-skip-permissions --print --verbose --output-format stream-json -p '/bmad-code-review Review code for story: ${STORY_FILE} — after the review, automatically apply all fixes to the code. Do not ask for confirmation, just make the edits.'"
+  if [[ "$START_STEP" -le 10 ]]; then
+    run_step "[10/${TOTAL}] Claude: Code review (pass 3)" \
+      "claude --dangerously-skip-permissions --print --verbose --output-format stream-json -p '/bmad-code-review Review code for story: ${STORY_FILE} — after the review, automatically apply all fixes to the code. Do not ask for confirmation, just make the edits.'" \
+      "$STORY_KEY" 10
+  fi
 
-  run_step "[11/${TOTAL}] Gemini: Code review (pass 4)" \
-    "gemini -y -p '/bmad-code-review Review code for story: ${STORY_FILE} — after the review, automatically apply all fixes to the code. Do not ask for confirmation, just make the edits.'"
+  if [[ "$START_STEP" -le 11 ]]; then
+    run_step "[11/${TOTAL}] Gemini: Code review (pass 4)" \
+      "gemini --model=gemini-3.1-pro-preview -y -p '/bmad-code-review Review code for story: ${STORY_FILE} — after the review, automatically apply all fixes to the code. Do not ask for confirmation, just make the edits.'" \
+      "$STORY_KEY" 11
+  fi
 
-  # --- Phase 5: Git commit + push ---
+  # --- Phase 6: Git commit + push ---
   git_commit_and_push "$STORY_KEY"
+  clear_progress
 
   log ""
   log "╔════════════════════════════════════════════════════════════╗"
@@ -382,10 +554,18 @@ process_story() {
 }
 
 # --- Main ---
-if [[ -n "${1:-}" ]]; then
-  process_story "$1"
+if [[ -n "$STORY_ARG" ]]; then
+  process_story "$STORY_ARG"
 else
   TOTAL_PROCESSED=0
+  SKIP_TO_STORY=""
+  SKIP_TO_STEP=1
+
+  # Check for previous progress and offer resume
+  if check_resume; then
+    SKIP_TO_STORY="$RESUME_STORY"
+    SKIP_TO_STEP="$RESUME_STEP"
+  fi
 
   # Single loop: one story at a time, re-reading sprint-status each iteration
   MAX_LOOPS=200  # safety valve
@@ -425,7 +605,31 @@ else
     echo "  $EPIC — Story: $NEXT_STORY (total: $TOTAL_PROCESSED)"
     echo "============================================"
 
-    process_story "$NEXT_STORY"
+    # If resuming, check if the resume story matches or is already done
+    if [[ -n "$SKIP_TO_STORY" ]]; then
+      if [[ "$NEXT_STORY" == "$SKIP_TO_STORY" ]]; then
+        # Found the resume story — pick up at the saved step
+        process_story "$NEXT_STORY" "$SKIP_TO_STEP"
+        SKIP_TO_STORY=""
+        SKIP_TO_STEP=1
+      else
+        # Resume story doesn't match — check if it's already done
+        resume_status=$(grep -E "^\s+${SKIP_TO_STORY}:" "$SPRINT_STATUS" | sed 's/.*: //' | xargs || true)
+        if [[ "$resume_status" == "done" ]]; then
+          # Resume story already completed — clear resume and process normally
+          echo "==> Resume story $SKIP_TO_STORY already done — continuing normally"
+          clear_progress
+          SKIP_TO_STORY=""
+          SKIP_TO_STEP=1
+          process_story "$NEXT_STORY"
+        else
+          echo "==> Skipping $NEXT_STORY (resuming to $SKIP_TO_STORY)..."
+          continue
+        fi
+      fi
+    else
+      process_story "$NEXT_STORY"
+    fi
   done
 
   echo ""

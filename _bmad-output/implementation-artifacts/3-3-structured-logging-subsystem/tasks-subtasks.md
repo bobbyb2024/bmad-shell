@@ -1,0 +1,28 @@
+# Tasks / Subtasks
+
+- [x] Task 1: Initialize Logging Subsystem (AC: 1, 2, 7, 9)
+  - [x] 1.1: Create `src/bmad_orch/logging.py`.
+  - [x] 1.2: Implement `configure_logging(mode: str, level: str = "INFO")` to setup `structlog` with the appropriate processor chain. Support "human" and "machine" modes. Raise `ValueError` on unrecognized mode or level string.
+  - [x] 1.3: Define severity icon mapping for human mode and fixed-width 5-char severity text mapping for machine mode, using `LogLevel` from `engine/events.py`.
+  - [x] 1.4: Implement file-based logging with `RotatingFileHandler` (10MB limit, 5 backups) to `logs/bmad.log`. Include logic to `os.makedirs("logs", exist_ok=True)` and handle `OSError` if the file is unwritable.
+  - [x] 1.5: Configure `structlog.stdlib.ProcessorFormatter` to bridge stdlib `logging` calls through structlog's processor chain, unifying output from existing modules.
+- [x] Task 2: Async Context & Isolation (AC: 3, 4)
+  - [x] 2.1: Implement `structlog.contextvars` configuration in `configure_logging`.
+  - [x] 2.2: Implement an `async_task_wrapper` async-compatible decorator/context manager that ensures `clear_contextvars()` is called in a `finally` block.
+  - [x] 2.3: Implement a custom structlog processor that automatically captures `source` as the Python module name (e.g., `bmad_orch.engine.runner`).
+- [x] Task 3: Per-Step Log Capture & Consolidation (AC: 5, 8)
+  - [x] 3.1: Implement a per-step storage mechanism (e.g., `collections.defaultdict(deque)`) to ensure $O(1)$ log retrieval by `step_id` and $O(1)$ append.
+  - [x] 3.2: Implement a global limit of 50,000 entries across all step buffers with LRU eviction to prevent OOM.
+  - [x] 3.3: Implement `consolidate_step_logs(step_id: str) -> str` to format captured logs as a single newline-separated string, prefixed with a summary line.
+- [x] Task 4: Unit Testing (AC: 1-9)
+  - [x] 4.1: Create `tests/test_logging.py`.
+  - [x] 4.2: Verify human-mode formatting uses severity icons and colored output with microsecond precision.
+  - [x] 4.3: Verify machine-mode formatting produces structured plain text (NOT JSON) with fixed-width severity tags.
+  - [x] 4.4: Verify async context propagation and isolation (using `asyncio.gather` to check for leaks).
+  - [x] 4.5: Verify grep-friendliness: fixed timestamp positions (1-27), space at 28, severity at 29.
+  - [x] 4.6: Verify `ValueError` on invalid mode or level input.
+  - [x] 4.7: Verify file-based log rotation creates and rotates `logs/bmad.log`, ensuring directory creation.
+  - [x] 4.8: Verify stdlib logging bridge: calls to `logging.getLogger().info()` appear in structlog output.
+  - [x] 4.9: Verify buffer cap evicts entries when global limit is exceeded.
+  - [x] 4.10: Verify `get_step_logs` returns `provider_name` in each entry.
+  - [x] 4.11: Verify `consolidate_step_logs` returns correctly formatted string with prefix.

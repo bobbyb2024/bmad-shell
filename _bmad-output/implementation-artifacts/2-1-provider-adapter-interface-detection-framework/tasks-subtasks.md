@@ -1,0 +1,21 @@
+# Tasks / Subtasks
+
+- [x] Task 1: Define Shared Types & Exceptions (AC: 1, 5, 6, 7)
+  - [x] 1.1: Create `src/bmad_orch/types.py` with `OutputChunk` dataclass (`content: str`, `timestamp: float`, `metadata: dict[str, Any] = field(default_factory=dict)`) and `ErrorSeverity` enum (BLOCKING, IMPACTFUL, RECOVERABLE, WARNING). (AC: 1, 7)
+  - [x] 1.2: Create `src/bmad_orch/exceptions.py` with `BmadOrchError` base class (default severity: IMPACTFUL).
+  - [x] 1.3: Implement `ProviderError` (IMPACTFUL) inheriting from `BmadOrchError` as the provider exception base, then `ProviderNotFoundError` (BLOCKING), `ProviderCrashError` (IMPACTFUL), and `ProviderTimeoutError` (RECOVERABLE) inheriting from `ProviderError`. Ensure `ProviderNotFoundError` accepts an `available_providers` list.
+- [x] Task 2: PTY Output Capture Utility (AC: 6)
+  - [x] 2.1: Create `src/bmad_orch/providers/utils.py` using standard `os`, `fcntl`, and `asyncio` modules.
+  - [x] 2.2: Implement `spawn_pty_process(cmd: list[str], timeout: float = 30.0) -> AsyncIterator[OutputChunk]` using `os.openpty()` and `asyncio.create_subprocess_exec` with the slave FD. Use `asyncio.add_reader` or `stream_reader` for the master FD to avoid blocking. Implement robust timeout logic that sends SIGTERM/SIGKILL and reaps the process.
+  - [x] 2.3: Raise `NotImplementedError` on non-POSIX environments (guard with `os.name != 'posix'` check at function entry).
+- [x] Task 3: Define Provider Interface & Registry (AC: 1, 4, 5)
+  - [x] 3.1: Create `src/bmad_orch/providers/base.py` with `ProviderAdapter` ABC.
+  - [x] 3.2: Implement registry in `src/bmad_orch/providers/__init__.py` with singleton instance management, case-insensitive uniqueness checks, and subclass validation. Support passing `**config` to `get_adapter`.
+  - [x] 3.3: Implement `get_adapter(name: str, **config) -> ProviderAdapter` with `ProviderNotFoundError` containing available providers.
+  - [x] 3.4: Update `src/bmad_orch/providers/__init__.py` to export `ProviderAdapter`, `get_adapter`, and `register_adapter`.
+- [x] Task 4: Write comprehensive tests (AC: 1, 2, 3, 4, 5, 6, 7)
+  - [x] 4.0: Create `tests/conftest.py` with shared `MockProvider` fixture and registry reset logic for test isolation.
+  - [x] 4.1: Create `tests/test_providers/test_base.py` for ABC enforcement, `MockProvider` contract validation (including `**kwargs` in `execute`), and `execution_id` presence in `OutputChunk.metadata`.
+  - [x] 4.2: Create `tests/test_providers/test_registry.py` for registry uniqueness and instantiation with config.
+  - [x] 4.3: Create `tests/test_providers/test_utils.py` for PTY capture safety, resource cleanup, process termination on timeout, and non-zero exit.
+  - [x] 4.4: Create `tests/test_types.py` and `tests/test_exceptions.py` for model and hierarchy validation.

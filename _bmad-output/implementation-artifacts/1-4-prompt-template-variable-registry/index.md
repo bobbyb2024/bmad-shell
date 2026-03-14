@@ -1,0 +1,27 @@
+# Story 1.4: Prompt Template Variable Registry
+
+## Table of Contents
+
+- [Story 1.4: Prompt Template Variable Registry](#table-of-contents)
+  - [Story](./story.md)
+  - [Acceptance Criteria](./acceptance-criteria.md)
+  - [Tasks / Subtasks](./tasks-subtasks.md)
+  - [Dev Notes](./dev-notes.md)
+    - [Architecture Requirements](./dev-notes.md#architecture-requirements)
+    - [Variable Syntax & Resolution Rules](./dev-notes.md#variable-syntax-resolution-rules)
+    - [Known Template Variables (for test context)](./dev-notes.md#known-template-variables-for-test-context)
+    - [Error Handling Pattern](./dev-notes.md#error-handling-pattern)
+    - [Coding Conventions (from Stories 1.1-1.3)](./dev-notes.md#coding-conventions-from-stories-11-13)
+    - [Testing Standards](./dev-notes.md#testing-standards)
+    - [Files to Create](./dev-notes.md#files-to-create)
+    - [Files to Modify](./dev-notes.md#files-to-modify)
+    - [Files NOT to Touch](./dev-notes.md#files-not-to-touch)
+    - [Previous Story Intelligence (from Story 1-3)](./dev-notes.md#previous-story-intelligence-from-story-1-3)
+    - [Project Structure Notes](./dev-notes.md#project-structure-notes)
+    - [References](./dev-notes.md#references)
+  - [Dev Agent Record](./dev-agent-record.md)
+    - [Agent Model Used](./dev-agent-record.md#agent-model-used)
+    - [Debug Log References](./dev-agent-record.md#debug-log-references)
+    - [Completion Notes List](./dev-agent-record.md#completion-notes-list)
+    - [File List](./dev-agent-record.md#file-list)
+    - [Change Log](./dev-agent-record.md#change-log)

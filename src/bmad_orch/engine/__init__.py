@@ -14,6 +14,7 @@ from .events import (
     ResourceThresholdBreached,
 )
 from .emitter import EventEmitter
+from .cycle import CycleExecutor
 
 __all__ = [
     "EscalationLevel",
@@ -30,4 +31,5 @@ __all__ = [
     "ErrorOccurred",
     "ResourceThresholdBreached",
     "EventEmitter",
+    "CycleExecutor",
 ]

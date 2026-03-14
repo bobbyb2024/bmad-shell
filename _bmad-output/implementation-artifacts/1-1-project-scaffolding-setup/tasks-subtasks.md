@@ -1,0 +1,27 @@
+# Tasks / Subtasks
+
+- [x] **Task 1: Project Initialization & Dependencies** (AC: 1, 2, 3, 4, 5)
+  - [x] Initialize project with `uv init --package`
+  - [x] Pin Python 3.13 in `.python-version`
+  - [x] Add core dependencies: `typer[all]`, `rich`, `pydantic`, `pydantic-settings`, `pyyaml`, `structlog`, `psutil`, `libtmux`
+  - [x] Add dev dependencies: `pytest`, `pytest-cov`, `ruff`, `pyright`, `pre-commit`, `import-linter`
+- [x] **Task 2: Tooling Configuration** (AC: 6, 8, 10, 11)
+  - [x] Configure `pyproject.toml` for Ruff (line-length 120, target py313)
+  - [x] Configure `pyproject.toml` for Pyright (strict mode, src include)
+  - [x] Configure `pyproject.toml` for Pytest (cov enabled, testpaths)
+  - [x] Configure `pyproject.toml` for Import Linter (layers contract)
+  - [x] Setup `.pre-commit-config.yaml`
+- [x] **Task 3: Core Boilerplate & CLI** (AC: 6, 7)
+  - [x] Create `src/bmad_orch/py.typed`
+  - [x] Create `src/bmad_orch/types/__init__.py` (OutputChunk, ErrorSeverity, etc.)
+  - [x] Create `src/bmad_orch/errors.py` (BmadOrchError hierarchy)
+  - [x] Create `src/bmad_orch/cli.py` (Typer app with 4 subcommands + --init)
+  - [x] Implement `--init` callback logic
+- [x] **Task 4: Layer Structure** (AC: 10)
+  - [x] Create directories: `rendering/`, `providers/`, `engine/`, `state/`, `config/`
+  - [x] Create stub `__init__.py` in each directory
+- [x] **Task 5: CI Configuration** (AC: 12)
+  - [x] Create `.github/workflows/ci.yml`
+- [x] **Task 6: Smoke Tests** (AC: 9)
+  - [x] Create `tests/conftest.py`
+  - [x] Create `tests/test_smoke.py`

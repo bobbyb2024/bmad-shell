@@ -1,0 +1,21 @@
+# Tasks / Subtasks
+
+- [x] Task 1: Implement Gemini Adapter (AC: 1, 2, 3, 9)
+  - [x] 1.1: Create `src/bmad_orch/providers/gemini.py` inheriting from `ProviderAdapter`.
+  - [x] 1.2: Implement `detect()` using `shutil.which`. Cache binary path and `--version` in class attributes `_cli_path` and `_cli_version`.
+  - [x] 1.3: Implement `list_models()` with fallback to configurable defaults if the subcommand is missing or returns an error.
+  - [x] 1.4: Register `GeminiAdapter` in `ADAPTER_MAP` within `src/bmad_orch/providers/__init__.py`.
+- [x] Task 2: Implement Execution Logic (AC: 3, 4, 5, 6, 7, 8)
+  - [x] 2.1: Implement `execute()`; merge `execution_id`, `model`, `provider`, and `version` into the metadata of each `OutputChunk`.
+  - [x] 2.2: Pass API key via `env` parameter with `PATH`, `HOME`, and `LANG` preserved; check both `GEMINI_API_KEY` and `GOOGLE_API_KEY`.
+  - [x] 2.3: Implement buffer check for binary/HTML (`<html>`, `502`, etc.) using case-insensitive regex for the first 2KB and continuous monitoring.
+  - [x] 2.4: Implement SIGTERM -> Configurable Wait -> SIGKILL flow.
+  - [x] 2.5: Yield final `OutputChunk` with completion status metadata after buffer flush on exit code 0 (AC5).
+- [x] Task 3: Write tests (AC: 1-9)
+  - [x] 3.1: Create `tests/test_providers/test_gemini.py`.
+  - [x] 3.2: Mock `shutil.which` and `spawn_pty_process`.
+  - [x] 3.3: Test streaming, metadata presence (`execution_id`, `model`, `provider`, `version`), timeouts, and crashes.
+  - [x] 3.4: Test auth propagation (both key names) and missing-key error.
+  - [x] 3.5: Test `list_models()` success path and fallback path.
+  - [x] 3.6: Test defensive parsing with various HTML/Proxy error payloads.
+  - [x] 3.7: Test retry logic for transient failures.

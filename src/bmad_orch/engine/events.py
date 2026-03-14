@@ -48,6 +48,7 @@ class CycleCompleted(BaseEvent):
 
 @dataclass(frozen=True, kw_only=True)
 class EscalationChanged(BaseEvent):
+    step_name: str
     previous_level: Optional[EscalationLevel]
     new_level: EscalationLevel
 

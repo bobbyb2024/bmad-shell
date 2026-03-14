@@ -1,0 +1,14 @@
+# Acceptance Criteria
+
+1. **Given** a new project directory, **When** I run `uv init --name bmad-orch --package`, **Then** the project has `src/bmad_orch/` layout with `__init__.py` and `py.typed`.
+2. **And** `.python-version` exists, pins Python 3.13, and is tracked in version control (must NOT be gitignored).
+3. **And** `uv.lock` exists and is tracked in version control.
+4. **Given** the project is initialized, **When** I run `uv add "typer[all]" rich pydantic pydantic-settings pyyaml structlog psutil libtmux` and `uv add --dev pytest pytest-cov ruff pyright pre-commit import-linter`, **Then** all core and development dependencies are added to `pyproject.toml`.
+5. **And** note: `rich` and `libtmux` are declared as dependencies but per architecture rules must only be imported lazily at function-level in rendering modules — never at module-level in core engine code. This is enforced by `test_import_isolation.py` (see Story 1.2+).
+6. **Given** the dependencies are installed, **When** I configure `pyproject.toml` with `[tool.ruff]`, `[tool.pyright]` (strict), `[tool.pytest.ini_options]`, and `[tool.importlinter]` sections, **And** I create `src/bmad_orch/types.py`, `src/bmad_orch/errors.py`, and `src/bmad_orch/cli.py` with initial type-safe boilerplate, **And** I run `uv run bmad-orch --help`, **Then** Typer displays the CLI help with `start`, `resume`, `status`, `validate` subcommands and `--init` option listed.
+7. **And** when `--init` is passed, the callback must exit after the wizard completes and must NOT fall through to execute a subcommand.
+8. **Given** the project is configured, **When** I run `uv run ruff check . && uv run pyright`, **Then** both pass with zero errors under strict configuration, **And** pyright recognizes the package as typed via the `py.typed` PEP 561 marker.
+9. **Given** the project is configured, **When** I create `tests/conftest.py` and smoke tests in `tests/test_smoke.py`, **And** I run `uv run pytest`, **Then** the test suite runs with coverage reporting enabled for `src/bmad_orch/`, **And** smoke tests specifically verify importability, core types, error hierarchy, and CLI help.
+10. **Given** the project is configured, **When** I create `[tool.importlinter]` configuration in `pyproject.toml` enforcing the layer hierarchy: `rendering` -> `providers` -> `engine` -> `state` -> `config` -> `types`, **And** I create stub `__init__.py` files for each layer package, **And** I run `uv run lint-imports`, **Then** the check passes with zero violations.
+11. **Given** the project is initialized, **When** I run `pre-commit install` and then `git commit`, **Then** pre-commit hooks execute Ruff and pyright automatically, **And** `.pre-commit-config.yaml` exists with pinned hook versions.
+12. **Given** the project contains a `.github/workflows/` directory, **When** I inspect `ci.yml`, **Then** it contains jobs for ruff, pyright, pytest, and import-linter.

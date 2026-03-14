@@ -1,0 +1,26 @@
+# Tasks / Subtasks
+
+- [x] Task 1: Implement Playbook Summary rendering (AC: 1, 2, 3, 5)
+  - [x] 1.1: Create `src/bmad_orch/rendering/summary.py` with `render_playbook_summary(config: OrchestratorConfig, dry_run: bool = False)`.
+  - [x] 1.2: Use Rich `Table` to display providers, models, cycles, steps, and prompt templates.
+- [x] Task 2: Update CLI and Error Registry (AC: 1-6)
+  - [x] 2.1: Add `ConfigProviderError` to `src/bmad_orch/errors.py` for invalid provider references.
+  - [x] 2.2: Add `--dry-run` and `--no-preflight` options to the `start` command in `src/bmad_orch/cli.py`.
+  - [x] 2.3: Implement logic to detect "first run" or "config changed". **Store an MD5 hash of the normalized config file in the state file's `config_hash` field. A mismatch or missing state file triggers the mandatory AC2 flow.**
+  - [x] 2.4: Implement confirmation logic (Enter to proceed, `q` to quit with exit code 130, `m` to modify).
+  - [x] 2.5: Implement interruptible/pausable auto-dismiss logic (3s) for subsequent runs (AC3).
+  - [x] 2.6: Implement editor modification flow: handle the editor subprocess and the re-validation loop. If re-validation fails, display errors using Rich and prompt for re-edit or quit (130).
+  - [x] 2.7: Implement `--no-preflight` flag to skip summary display entirely (AC6).
+  - [x] 2.8: Implement `--dry-run` + `--no-preflight` precedence logic (AC7).
+- [x] Task 3: Engine/Runner implementation (AC: 1)
+  - [x] 3.1: Create `src/bmad_orch/engine/runner.py` with `Runner(config: OrchestratorConfig, state_path: Optional[Path] = None)`. **If `state_path` is None, the runner should operate in-memory without persistence.**
+  - [x] 3.2: Implement `run(dry_run: bool = False)` method that performs a full walk of the execution plan without calling providers if `dry_run` is true.
+- [x] Task 4: Write comprehensive tests (AC: 1, 2, 3, 4, 5, 6)
+  - [x] 4.1: Create `tests/test_rendering/__init__.py` and `tests/test_rendering/test_summary.py` for summary table rendering.
+  - [x] 4.2: Create `tests/test_engine/__init__.py` and `tests/test_engine/test_runner.py` to verify the `run(dry_run=True)` logic does not invoke providers.
+  - [x] 4.3: Create `tests/test_cli_dry_run.py` to test AC1: CLI output contains expected details.
+  - [x] 4.4: Create `tests/test_cli_preflight.py` to test AC2, AC3, AC4, and AC6. **Mock the editor invocation to simulate editor sessions and file changes.**
+  - [x] 4.5: Test AC5: invalid provider reference raises `ConfigProviderError`, outputs to stderr, and exits with code 2.
+  - [x] 4.6: Test exit codes: 0 (success/dry-run), 2 (config error), 130 (user quit).
+  - [x] 4.7: Test AC7: `--dry-run --no-preflight` combination.
+  - [x] 4.8: Test AC4 no-editor-found path: verify error message and summary re-display.

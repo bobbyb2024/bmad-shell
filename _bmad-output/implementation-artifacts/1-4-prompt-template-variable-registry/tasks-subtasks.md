@@ -1,0 +1,27 @@
+# Tasks / Subtasks
+
+- [x] Task 1: Create TemplateResolver class (AC: 1, 2, 4, 5)
+  - [x] 1.1: Create `src/bmad_orch/config/template.py` with `TemplateResolver` class
+  - [x] 1.2: Implement `resolve(prompt: str, context: Mapping[str, str]) -> str` method using regex-based `{variable}` detection
+  - [x] 1.3: Implement `find_variables(prompt: str) -> set[str]` to extract all `{...}` variable names from a prompt
+  - [x] 1.4: Implement single-pass resolution: collect all variables first, validate all resolvable, then substitute all at once
+  - [x] 1.5: Handle plain text passthrough (no variables detected = return unchanged)
+- [x] Task 2: Implement error handling for unresolvable variables (AC: 3)
+  - [x] 2.1: Raise `ConfigError` with message format: `✗ Unresolvable template variable '{var_name}' in step '{step_name}' — check prompt template in config`
+  - [x] 2.2: Include step name context in error (accept `step_name` parameter in resolve method)
+  - [x] 2.3: When multiple variables are unresolvable, report ALL missing variables in a single error (not just the first)
+- [x] Task 3: Integrate TemplateResolver into config module (AC: 1, 2, 3, 4, 5)
+  - [x] 3.1: Export `TemplateResolver` from `config/__init__.py` and add to `__all__`
+  - [x] 3.2: Add `resolve_step_prompts(config: OrchestratorConfig, context: Mapping[str, str]) -> OrchestratorConfig` convenience function that resolves all prompts across all cycles/steps
+  - [x] 3.3: Ensure import isolation — `config/template.py` only imports from `types` and `errors` (enforce layer rules)
+- [x] Task 4: Write comprehensive tests (AC: 1, 2, 3, 4, 5)
+  - [x] 4.1: Create `tests/test_config/test_template.py` with unit tests
+  - [x] 4.2: Test AC1: `{next_story_id}` resolves correctly
+  - [x] 4.3: Test AC2: `{current_story_file}` resolves correctly
+  - [x] 4.4: Test AC3: unknown variable raises `ConfigError` with exact error format
+  - [x] 4.5: Test AC4: multiple variables resolved in single pass
+  - [x] 4.6: Test AC5: plain text passes through unchanged
+  - [x] 4.7: Test edge cases: empty string, prompt with only variables, adjacent variables `{a}{b}`, variable-like text without braces
+  - [x] 4.8: Test `find_variables` returns correct set of variable names
+  - [x] 4.9: Test multiple unresolvable variables reports all in error
+  - [x] 4.10: Ensure 100% coverage on `config/template.py`

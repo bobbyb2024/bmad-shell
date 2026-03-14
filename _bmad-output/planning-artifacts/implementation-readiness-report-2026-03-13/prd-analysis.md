@@ -1,0 +1,98 @@
+# PRD Analysis
+
+## Functional Requirements
+
+FR1: User can generate a new orchestrator config file through an interactive wizard
+FR2: User can define multiple providers with name, CLI command, and model in the config
+FR3: User can define cycles with ordered steps, each specifying a skill, provider, step type (generative/validation), and prompt template
+FR3a: User can define the execution order of cycles within a workflow
+FR4: User can configure cycle repeat counts to control how many times validation steps re-execute
+FR5: User can configure pause durations between steps, cycles, and workflows
+FR6: User can configure git commit and push timing (per-step, per-cycle, or end-of-run)
+FR7: User can configure error handling behavior (retry settings, max retries, retry delay)
+FR8: User can specify config file location via command-line flag or convention-based discovery
+FR9: System can resolve prompt template variables (e.g., `{next_story_id}`, `{current_story_file}`) from orchestrator state; unresolvable variables halt the step with a clear error identifying the missing variable
+FR10: System can detect installed CLI tools (Claude, Gemini, others) on the host machine
+FR11: System can query a provider's CLI for available models
+FR12a: System can invoke a provider's CLI as a subprocess with a configured prompt
+FR12b: System can capture stdout and stderr from a running provider subprocess
+FR12c: System can detect provider subprocess completion, timeout, or unexpected termination
+FR13: System can normalize provider output and error behavior through a provider adapter interface
+FR14: System can operate with a single provider when only one is available (graceful degradation)
+FR15: System can execute a cycle's steps in configured order
+FR16: System can distinguish generative steps (run only on first cycle) from validation steps (run every cycle)
+FR17: System can repeat a cycle's validation steps for the configured number of repetitions
+FR18: System can execute multiple cycles in sequence (story → atdd → dev) as a complete workflow
+FR19: System can pause for configured durations between steps and cycles to manage rate limits
+FR20: System can atomically persist execution state to a JSON state file after each step completion
+FR21: System can record which step was last completed, which provider executed it, and the outcome
+FR22: User can resume execution from the last completed step after an interruption
+FR23: User can choose on resume whether to re-run the last step, continue from next, restart the cycle, or start from scratch
+FR24: System can maintain a running log of all state changes across multiple runs
+FR25: System can capture per-step logs with timestamps, step identifiers, provider tags, and severity levels
+FR26: System can consolidate per-step logs into a single run log file before commit
+FR27: User can view current orchestrator state without starting a run (`status` command)
+FR28: System can write structured text logs suitable for both human reading and grep-based debugging
+FR29: System can commit orchestrator output and logs to git at configurable intervals
+FR30: System can push commits to remote at configurable intervals
+FR31: System can perform emergency commit and push when an impactful error occurs before halting
+FR32: System can display a two-pane tmux layout showing active model output and command/log pane
+FR32a: TUI output pane automatically switches to display the currently active model as the cycle progresses
+FR33: System can display a status bar showing current phase, step, provider, and cycle progress
+FR34: User can pause execution after the current step completes
+FR35: User can skip the current step
+FR36: User can abort execution (triggering commit + push + halt)
+FR37: User can restart the current step
+FR38: User can validate a config file for schema correctness, provider availability, and model existence without executing (`validate` command)
+FR39: System can detect and classify errors as recoverable or impactful
+FR40: System can log recoverable errors and continue execution
+FR41: System can halt execution on impactful errors after committing state and pushing to remote
+FR42: Init wizard can detect installed CLI providers and present them for selection
+FR43: Init wizard can query selected providers for available models and present them for selection
+FR44: Init wizard can offer sensible default cycle configurations that the user can accept or modify
+FR45: Init wizard can generate a valid `bmad-orch.yaml` config file from user selections
+FR46: System can display a playbook summary on start showing all cycles, steps, providers, and prompts that will execute, and prompt the user to proceed or modify
+FR47: User can perform a dry run that shows the complete execution plan without invoking any providers (`--dry-run` flag)
+FR48: State file maintains a human-readable run history including all completed steps, providers used, outcomes, timestamps, and errors
+FR49: User can send input to the active model's subprocess via the command pane when the model is awaiting a response
+
+Total FRs: 53 (including sub-items)
+
+## Non-Functional Requirements
+
+NFR1: System must maintain consistent state file integrity — a crash or kill at any point must leave the state file in a valid, recoverable condition (atomic writes)
+NFR2: System must complete 10+ consecutive story cycles without requiring human intervention for non-content reasons
+NFR3: System must detect and recover from transient provider failures (rate limits, timeouts, network interruptions) without corrupting state
+NFR4: System must never lose completed work — all successful step outputs must be persisted before the next step begins
+NFR5: System must gracefully handle unexpected provider subprocess termination (crash, OOM kill, signal) without entering an unrecoverable state
+NFR6: Log files must be complete enough to diagnose any failure without reproducing it
+NFR7: The orchestrator process plus all spawned CLI subprocesses must not collectively exceed 80% of system CPU usage
+NFR8: The orchestrator must monitor memory usage of itself and spawned subprocesses; if combined usage exceeds 80% of system memory, the orchestrator must kill the offending subprocess and log an impactful error
+NFR9: The orchestrator must not leak file handles, subprocess references, or temporary files across step boundaries
+NFR10: Resource monitoring must be active in both interactive and headless modes
+NFR11: When a subprocess is killed for resource violation, the orchestrator must treat it as an impactful error (log, commit, push, halt)
+NFR12: Provider adapters must tolerate minor CLI output format changes without breaking
+NFR13: The orchestrator must target current/latest versions of provider CLIs only — no backwards compatibility shims
+NFR14: Provider subprocess invocation must be isolated — a hung or misbehaving provider must not block the orchestrator's ability to log, update state, or respond to user commands
+NFR15: Git operations must handle common failure cases (lock files, network failures, auth issues) with clear error messages
+
+Total NFRs: 15
+
+## Additional Requirements
+
+- Init wizard gets a new user from zero to working config in under 5 minutes
+- New user from install to first successful automated run in <15 minutes
+- Full story cycle requires ≤5 minutes of human review time
+- <5% of runs require human intervention for non-content reasons
+- Shell completion for bash/zsh/fish
+- Stdout/stderr separation
+- Specific exit codes for different failure categories
+- `--init --update` for adding providers to existing config
+- Config portability across team members
+- Headless-first architecture with TUI as presentation layer
+
+## PRD Completeness Assessment
+
+The PRD is exceptionally comprehensive and implementation-ready. It features detailed user journeys that clearly illustrate the tool's operation in both interactive and headless modes. The functional requirements are granular, well-organized, and cover all aspects of configuration, provider management, the cycle engine, state management, and the TUI. The non-functional requirements are specific and measurable, particularly regarding reliability and resource management. The phased development approach is logical and well-defined. Overall, the PRD provides a solid foundation for architectural design and implementation.
+
+---

@@ -10,6 +10,7 @@ from pydantic import ValidationError
 
 from bmad_orch.state.schema import RunState, StepRecord, CycleRecord
 from bmad_orch.exceptions import StateError
+from bmad_orch.types import StepOutcome
 
 logger = logging.getLogger(__name__)
 

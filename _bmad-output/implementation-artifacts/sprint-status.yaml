@@ -3,7 +3,6 @@
 # project: bmad-shell
 # project_key: NOKEY
 # tracking_system: file-system
-# story_location: _bmad-output/implementation-artifacts
 
 # STATUS DEFINITIONS:
 # ==================
@@ -59,8 +58,8 @@ development_status:
   3-1-event-emitter-event-types: done
   3-2-state-manager-atomic-persistence: done
   3-3-structured-logging-subsystem: done
-  3-4-cycle-execution-engine: backlog
-  3-5-error-detection-classification: backlog
+  3-4-cycle-execution-engine: done
+  3-5-error-detection-classification: ready-for-dev
   3-6-multi-cycle-workflow-orchestration: backlog
   epic-3-retrospective: optional
   epic-4: backlog

@@ -1,4 +1,5 @@
 import pytest
+import asyncio
 from bmad_orch.config.schema import validate_config
 from bmad_orch.engine.runner import Runner
 
@@ -22,10 +23,11 @@ def valid_config():
     }
     return validate_config(data)
 
-def test_runner_dry_run_walks_plan(valid_config):
+@pytest.mark.asyncio
+async def test_runner_dry_run_walks_plan(valid_config):
     runner = Runner(valid_config)
     # This should complete without errors
-    runner.run(dry_run=True)
+    await runner.run(dry_run=True)
 
 def test_runner_initialization_no_state(valid_config):
     runner = Runner(valid_config, state_path=None)

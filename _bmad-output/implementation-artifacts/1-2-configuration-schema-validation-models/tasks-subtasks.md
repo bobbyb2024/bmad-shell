@@ -1,0 +1,44 @@
+# Tasks / Subtasks
+
+- [x] Task 1: Define new enum types (AC: 1, 3)
+  - [x] Add `Timing` enum (`step`, `cycle`, `end`) to `src/bmad_orch/types/__init__.py` — single enum for both commit and push timing (identical values, no justification for separate types)
+  - [x] `StepType` already exists — DO NOT recreate
+- [x] Task 2: Create Pydantic models in `src/bmad_orch/config/schema.py` (AC: 1, 4, 5)
+  - [x] `ProviderConfig(BaseModel)`: `name: str` (min_length=1), `cli: str` (min_length=1), `model: str` (min_length=1)
+  - [x] `StepConfig(BaseModel)`: `skill: str` (min_length=1), `provider: int`, `type: StepType`, `prompt: str` (min_length=1)
+  - [x] `CycleConfig(BaseModel)`: `steps: list[StepConfig]` (min_length=1), `repeat: int = 1` (≥1), `pause_between_steps: float | None = None` (≥0 if set), `pause_between_cycles: float | None = None` (≥0 if set)
+  - [x] `GitConfig(BaseModel)`: `commit_at: Timing`, `push_at: Timing`
+  - [x] `PauseConfig(BaseModel)`: `between_steps: float` (≥0), `between_cycles: float` (≥0), `between_workflows: float` (≥0)
+  - [x] `ErrorConfig(BaseModel)`: `retry_transient: bool = True`, `max_retries: int = 3` (≥1), `retry_delay: float = 10.0` (≥0)
+  - [x] `OrchestratorConfig(BaseModel)`: `providers: dict[int, ProviderConfig]` (min 1 entry), `cycles: dict[str, CycleConfig]` (min 1 entry), `git: GitConfig`, `pauses: PauseConfig`, `error_handling: ErrorConfig`
+  - [x] `validate_config(data: dict) -> OrchestratorConfig`: entry-point function that wraps `ValidationError` in `ConfigError`
+- [x] Task 3: Add cross-field validation (AC: 1, 2, 3, 6)
+  - [x] `@model_validator` on `OrchestratorConfig`: validate all `StepConfig.provider` references exist in `providers` dict
+  - [x] `@field_validator` on `CycleConfig.repeat`: enforce `>= 1`
+  - [x] `@model_validator` on `OrchestratorConfig`: enforce `providers` has ≥1 entry and `cycles` has ≥1 entry
+  - [x] `@field_validator` on `ErrorConfig.max_retries`: enforce `>= 1`
+  - [x] `@field_validator` on `PauseConfig` float fields: enforce `>= 0`
+  - [x] `@field_validator` on `CycleConfig` optional pause fields: enforce `>= 0` when set
+  - [x] `@field_validator` on `ErrorConfig.retry_delay`: enforce `>= 0`
+  - [x] Wrap Pydantic `ValidationError` in `ConfigError` with clear, actionable messages — must preserve field name, invalid value, and valid options (for enums) in the wrapped message
+  - [x] Set `model_config = ConfigDict(extra="forbid")` on all models to catch YAML typos
+- [x] Task 4: Update `config/__init__.py` exports (AC: 1)
+  - [x] Export all models and `validate_config` from `config/__init__.py` with explicit `__all__` list
+- [x] Task 5: Write tests in `tests/test_config/test_schema.py` (AC: 1-5)
+  - [x] Test valid complete config creates `OrchestratorConfig` with all typed fields
+  - [x] Test missing required section raises `ConfigError` with field name in message
+  - [x] Test invalid enum value raises `ConfigError` listing valid options
+  - [x] Test `StepConfig` field types enforced
+  - [x] Test `CycleConfig` with `repeat < 1` raises error
+  - [x] Test `CycleConfig` with default `repeat=1` works
+  - [x] Test extra/unknown YAML keys raise validation error
+  - [x] Test provider reference in step pointing to nonexistent provider raises `ConfigError`
+  - [x] Test valid config with optional pause overrides in cycle
+  - [x] Test wrong-type value in nested model (e.g., `provider: "one"` instead of int in `StepConfig`) raises `ConfigError`
+  - [x] Test empty `providers` dict raises `ConfigError`
+  - [x] Test empty `steps` list in `CycleConfig` raises `ConfigError`
+  - [x] Test `max_retries: 0` and `max_retries: -1` raise `ConfigError`
+  - [x] Test negative pause values raise `ConfigError`
+  - [x] Test `ConfigError` message for invalid enum contains field name, bad value, and valid options
+  - [x] Test `validate_config()` wrapper function returns `OrchestratorConfig` on valid input
+  - [x] Test `validate_config()` wrapper raises `ConfigError` (not raw `ValidationError`) on invalid input
