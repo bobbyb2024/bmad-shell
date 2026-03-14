@@ -19,15 +19,22 @@ class ProviderAdapter(ABC):
         """List available models for this provider."""
         pass
 
+    def _get_base_metadata(self, **kwargs: Any) -> dict[str, Any]:
+        """Provide base metadata including execution_id. AC4."""
+        return {
+            "execution_id": kwargs.get("execution_id", str(uuid.uuid4())),
+            "timestamp": time.time()
+        }
+
     async def execute(self, prompt: str, **kwargs: Any) -> AsyncIterator[OutputChunk]:
         """Execute the prompt and stream output chunks."""
         # Ensure a unique execution_id per execute() call
-        execution_id = kwargs.get("execution_id", str(uuid.uuid4()))
+        base_meta = self._get_base_metadata(**kwargs)
         
         async for chunk in self._execute(prompt, **kwargs):
             # Attach execution_id if missing in metadata
             if "execution_id" not in chunk.metadata:
-                new_metadata = {**chunk.metadata, "execution_id": execution_id}
+                new_metadata = {**base_meta, **chunk.metadata}
                 chunk = replace(chunk, metadata=new_metadata)
             yield chunk
 

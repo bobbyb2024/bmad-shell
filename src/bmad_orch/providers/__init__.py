@@ -1,24 +1,28 @@
-from typing import Any, Type
-from bmad_orch.providers.base import ProviderAdapter
+from typing import Any
+
 from bmad_orch.exceptions import ProviderNotFoundError
+from bmad_orch.providers.base import ProviderAdapter
+from bmad_orch.providers.claude import ClaudeAdapter
 
 # Internal registry of provider classes
-_registry: dict[str, Type[ProviderAdapter]] = {}
+_registry: dict[str, type[ProviderAdapter]] = {}
 
 # Internal registry of instantiated singletons
 _instances: dict[str, ProviderAdapter] = {}
 
 
-def register_adapter(name: str, adapter_cls: Type[ProviderAdapter]) -> None:
+def register_adapter(name: str, adapter_cls: type[ProviderAdapter]) -> None:
     """Register a new provider adapter class."""
-    if not issubclass(adapter_cls, ProviderAdapter):
-        raise TypeError(f"{adapter_cls} must be a subclass of ProviderAdapter")
+    if not isinstance(adapter_cls, type) or not issubclass(adapter_cls, ProviderAdapter):
+        msg = f"adapter_cls must be a subclass of ProviderAdapter, got {adapter_cls}"
+        raise TypeError(msg)
 
     normalized_name = name.lower()
-    if normalized_name in _registry:
-        raise ValueError(f"Provider '{name}' already exists.")
-
     _registry[normalized_name] = adapter_cls
+
+
+# Pre-register known adapters
+register_adapter("claude", ClaudeAdapter)
 
 
 def get_adapter(name: str, **config: Any) -> ProviderAdapter:

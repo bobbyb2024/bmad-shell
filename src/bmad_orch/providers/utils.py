@@ -11,7 +11,7 @@ from bmad_orch.exceptions import ProviderTimeoutError, ProviderCrashError
 
 
 async def spawn_pty_process(
-    cmd: list[str], timeout: float = 30.0
+    cmd: list[str], timeout: float = 30.0, env: dict[str, str] = None, grace_period: float = 2.0
 ) -> AsyncIterator[OutputChunk]:
     """Spawn a process in a PTY and yield output chunks."""
     if os.name != "posix":
@@ -31,6 +31,7 @@ async def spawn_pty_process(
             stderr=slave_fd,
             close_fds=False,  # Keep FDs open for child
             start_new_session=True,
+            env=env,
         )
     finally:
         # We MUST close slave_fd in the parent process as soon as child has it
@@ -94,7 +95,7 @@ async def spawn_pty_process(
                 except (ProcessLookupError, PermissionError):
                     process.terminate()
                 try:
-                    await asyncio.wait_for(process.wait(), timeout=2.0)
+                    await asyncio.wait_for(process.wait(), timeout=grace_period)
                 except asyncio.TimeoutError:
                     try:
                         os.killpg(process.pid, signal.SIGKILL)
@@ -122,7 +123,7 @@ async def spawn_pty_process(
             except (ProcessLookupError, PermissionError):
                 process.terminate()
             try:
-                await asyncio.wait_for(process.wait(), timeout=1.0)
+                await asyncio.wait_for(process.wait(), timeout=grace_period)
             except asyncio.TimeoutError:
                 try:
                     os.killpg(process.pid, signal.SIGKILL)

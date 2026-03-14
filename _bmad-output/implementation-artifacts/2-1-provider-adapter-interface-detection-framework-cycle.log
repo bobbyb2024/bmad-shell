@@ -1239,3 +1239,31 @@ I've updated the tests and checked that `2-1-provider-adapter-interface-detectio
 [2026-03-14 10:06:01] ────────────────────────────────────────────────────────────
 [2026-03-14 10:06:01]   GIT: Committing and pushing (2-1-provider-adapter-interface-detection-framework)
 [2026-03-14 10:06:01] ────────────────────────────────────────────────────────────
+[main b7b395e] feat(story): complete lifecycle for 2-1-provider-adapter-interface-detection-framework
+ 34 files changed, 3127 insertions(+), 193 deletions(-)
+ create mode 100644 _bmad-output/implementation-artifacts/2-1-provider-adapter-interface-detection-framework-cycle.log
+ create mode 100644 _bmad-output/implementation-artifacts/2-1-provider-adapter-interface-detection-framework.md
+ create mode 100644 _bmad-output/implementation-artifacts/2-2-claude-cli-adapter.md
+ create mode 100644 _bmad-output/implementation-artifacts/2-3-gemini-cli-adapter.md
+ create mode 100644 _bmad-output/implementation-artifacts/2-4-single-provider-graceful-mode.md
+ create mode 100755 claude-stream-filter.py
+ create mode 100755 kill-step.sh
+ delete mode 100644 src/bmad_orch/errors.py
+ create mode 100644 src/bmad_orch/exceptions.py
+ create mode 100644 src/bmad_orch/providers/base.py
+ create mode 100644 src/bmad_orch/providers/utils.py
+ create mode 100644 tests/test_exceptions.py
+ create mode 100644 tests/test_providers/__init__.py
+ create mode 100644 tests/test_providers/test_base.py
+ create mode 100644 tests/test_providers/test_registry.py
+ create mode 100644 tests/test_providers/test_utils.py
+To github.com:bobbyb2024/bmad-shell.git
+   b9f58cc..b7b395e  main -> main
+[2026-03-14 10:06:02]   GIT: Committed and pushed successfully.
+[2026-03-14 10:06:02] 
+[2026-03-14 10:06:02] ╔════════════════════════════════════════════════════════════╗
+[2026-03-14 10:06:02]   COMPLETE: 2-1-provider-adapter-interface-detection-framework
+[2026-03-14 10:06:02]   Log: _bmad-output/implementation-artifacts/2-1-provider-adapter-interface-detection-framework-cycle.log
+[2026-03-14 10:06:02]   Finished: 2026-03-14 10:06:02
+[2026-03-14 10:06:02] ╚════════════════════════════════════════════════════════════╝
+[2026-03-14 10:06:02] 
