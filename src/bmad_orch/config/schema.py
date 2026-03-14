@@ -2,7 +2,7 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator, model_validator
 
-from bmad_orch.errors import ConfigError
+from bmad_orch.errors import ConfigError, ConfigProviderError
 from bmad_orch.types import StepType, Timing
 
 
@@ -90,6 +90,8 @@ class OrchestratorConfig(BaseModel):
         for cycle_id, cycle in self.cycles.items():
             for i, step in enumerate(cycle.steps):
                 if step.provider not in provider_ids:
+                    # We raise ValueError here because it's inside a pydantic validator.
+                    # validate_config will handle wrapping/re-raising.
                     raise ValueError(f"Cycle '{cycle_id}' step {i} references nonexistent provider ID: {step.provider}")
 
         return self
@@ -99,11 +101,17 @@ def validate_config(data: dict[str, Any]) -> OrchestratorConfig:
     """Validate a raw configuration dictionary and return an OrchestratorConfig object.
 
     Raises:
-        ConfigError: If the configuration is invalid, wrapping the Pydantic ValidationError.
+        ConfigError: If the configuration is invalid.
+        ConfigProviderError: If a step references a nonexistent provider.
     """
     try:
         return OrchestratorConfig(**data)
     except ValidationError as e:
+        # Check if any error is a provider reference error
+        for error in e.errors():
+            if "references nonexistent provider ID" in error["msg"]:
+                raise ConfigProviderError(f"✗ Config validation failed — {error['msg']}") from e
+
         # Pydantic v2 ValidationError messages can be quite detailed.
         # We need to wrap them in ConfigError as per requirements.
         # The requirement asks to preserve field name, invalid value, and valid options (for enums).

@@ -23,6 +23,10 @@ class ConfigError(BmadOrchError):
     default_severity = ErrorSeverity.BLOCKING
 
 
+class ConfigProviderError(ConfigError):
+    """Raised when a configuration references a nonexistent provider."""
+
+
 class ProviderError(BmadOrchError):
     """Base exception for provider-related errors."""
 

@@ -47,7 +47,7 @@ development_status:
   1-2-configuration-schema-validation-models: done
   1-3-config-file-loading-discovery: done
   1-4-prompt-template-variable-registry: done
-  1-5-playbook-summary-dry-run: backlog
+  1-5-playbook-summary-dry-run: done
   epic-1-retrospective: optional
   epic-2: backlog
   2-1-provider-adapter-interface-detection-framework: backlog
