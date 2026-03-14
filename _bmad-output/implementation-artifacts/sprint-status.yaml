@@ -48,7 +48,7 @@ development_status:
   1-3-config-file-loading-discovery: done
   1-4-prompt-template-variable-registry: done
   1-5-playbook-summary-dry-run: done
-  epic-1-retrospective: optional
+  epic-1-retrospective: done
   epic-2: done
   2-1-provider-adapter-interface-detection-framework: done
   2-2-claude-cli-adapter: done
@@ -56,7 +56,7 @@ development_status:
   2-4-single-provider-graceful-mode: done
   epic-2-retrospective: optional
   epic-3: in-progress
-  3-1-event-emitter-event-types: ready-for-dev
+  3-1-event-emitter-event-types: done
   3-2-state-manager-atomic-persistence: backlog
   3-3-structured-logging-subsystem: backlog
   3-4-cycle-execution-engine: backlog
