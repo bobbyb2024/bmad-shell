@@ -12,8 +12,12 @@ class ProviderAdapter(ABC):
     install_hint: str = "Install the CLI for this provider."
 
     @abstractmethod
-    def detect(self) -> bool:
-        """Detect if the provider CLI binary is available on the system."""
+    def detect(self, cli_path: str | None = None) -> bool:
+        """Detect if the provider CLI binary is available on the system.
+        
+        Args:
+            cli_path (str | None): Optional custom path/name to check.
+        """
         pass
 
     @abstractmethod

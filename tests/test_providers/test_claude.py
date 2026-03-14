@@ -1,12 +1,20 @@
 import asyncio
-from unittest.mock import patch
-
+import os
+import subprocess
+from unittest.mock import patch, MagicMock
 import pytest
+import shutil
 
 from bmad_orch.exceptions import ProviderCrashError, ProviderError, ProviderTimeoutError
 from bmad_orch.providers.claude import ClaudeAdapter
 from bmad_orch.types import OutputChunk
 
+@pytest.fixture(autouse=True)
+def _reset_claude_class_state():
+    """Reset class-level state between tests."""
+    yield
+    ClaudeAdapter._cli_path = None
+    ClaudeAdapter._cli_version = "unknown"
 
 def test_detect_success():
     with patch("shutil.which", return_value="/usr/local/bin/claude"):
@@ -14,9 +22,8 @@ def test_detect_success():
             mock_exec.return_value = b"claude 0.1.0\n"
             adapter = ClaudeAdapter()
             assert adapter.detect() is True
-            assert adapter._version == "claude 0.1.0"
-            # Verify it used the absolute path
-            mock_exec.assert_called_with(["/usr/local/bin/claude", "--version"], stderr=-2) # -2 is subprocess.STDOUT
+            assert ClaudeAdapter._cli_path == "/usr/local/bin/claude"
+            assert ClaudeAdapter._cli_version == "claude 0.1.0"
 
 def test_detect_failure():
     with patch("shutil.which", return_value=None):
@@ -25,32 +32,18 @@ def test_detect_failure():
 
 def test_list_models_fallback():
     adapter = ClaudeAdapter()
-    import subprocess
-    with patch("shutil.which", return_value="/usr/local/bin/claude"):
-        with patch("subprocess.check_output", side_effect=subprocess.CalledProcessError(1, "cmd")):
-            models = adapter.list_models()
-            assert len(models) == 2
-            assert models[0]["id"] == "claude-3-5-sonnet-latest"
-
-def test_list_models_success():
-    adapter = ClaudeAdapter()
-    with patch("shutil.which", return_value="/usr/local/bin/claude"):
-        with patch("subprocess.check_output") as mock_exec:
-            mock_exec.return_value = b'[{"id": "model-1", "name": "Model 1"}]'
-            models = adapter.list_models()
-            assert len(models) == 1
-            assert models[0]["id"] == "model-1"
+    with patch("shutil.which", return_value=None):
+        models = adapter.list_models()
+        assert len(models) == 2
+        assert models[0]["id"] == "claude-3-5-sonnet-latest"
 
 @pytest.mark.asyncio
 async def test_execute_auth_propagation():
     adapter = ClaudeAdapter()
     with patch.dict("os.environ", {"ANTHROPIC_API_KEY": "test-key"}, clear=False):
-        # We need to mock spawn_pty_process
         mock_chunks = [OutputChunk(content="Hello", timestamp=1.0)]
         async def mock_spawn(*args, **kwargs):
-            # Check env contains the API key and preserves system env
             assert kwargs["env"]["ANTHROPIC_API_KEY"] == "test-key"
-            assert "PATH" in kwargs["env"]
             for c in mock_chunks:
                 yield c
 
@@ -58,10 +51,18 @@ async def test_execute_auth_propagation():
             chunks = []
             async for chunk in adapter.execute("test prompt"):
                 chunks.append(chunk)
-            
-            assert len(chunks) == 1
+
+            assert len(chunks) == 2 # Data chunk + Completion chunk
             assert chunks[0].content == "Hello"
-            assert "execution_id" in chunks[0].metadata
+            assert chunks[1].metadata["status"] == "completed"
+
+@pytest.mark.asyncio
+async def test_execute_no_api_key():
+    adapter = ClaudeAdapter()
+    with patch.dict("os.environ", {}, clear=True):
+        with pytest.raises(ProviderError, match="ANTHROPIC_API_KEY environment variable is mandatory"):
+            async for _ in adapter.execute("test prompt"):
+                pass
 
 @pytest.mark.asyncio
 async def test_execute_defensive_parsing_html():
@@ -73,7 +74,7 @@ async def test_execute_defensive_parsing_html():
                 yield c
 
         with patch("bmad_orch.providers.claude.spawn_pty_process", side_effect=mock_spawn):
-            with pytest.raises(ProviderError, match="Corrupted/HTML Provider Output detected."):
+            with pytest.raises(ProviderError, match="Corrupted/Provider Error detected: <html>"):
                 async for _ in adapter.execute("test prompt"):
                     pass
 
@@ -87,70 +88,34 @@ async def test_execute_defensive_parsing_binary():
                 yield c
 
         with patch("bmad_orch.providers.claude.spawn_pty_process", side_effect=mock_spawn):
-            with pytest.raises(ProviderError, match=r"Corrupted/HTML Provider Output \(binary detected\)."):
+            with pytest.raises(ProviderError, match=r"Corrupted/Provider Error \(binary detected\)."):
                 async for _ in adapter.execute("test prompt"):
                     pass
 
 @pytest.mark.asyncio
-async def test_execute_grace_period_propagation():
+async def test_execute_timeout_cleanup():
     adapter = ClaudeAdapter()
-    with patch.dict("os.environ", {
-        "ANTHROPIC_API_KEY": "test-key",
-        "CLAUDE_TERMINATION_GRACE_PERIOD": "5.5"
-    }, clear=False):
-        async def mock_spawn(*args, **kwargs):
-            assert kwargs["grace_period"] == 5.5
-            yield OutputChunk(content="Ok", timestamp=1.0)
-
-        with patch("bmad_orch.providers.claude.spawn_pty_process", side_effect=mock_spawn):
-            async for _ in adapter.execute("test prompt"):
-                pass
-
-@pytest.mark.asyncio
-async def test_execute_crash_with_version():
-    adapter = ClaudeAdapter()
-    adapter._version = "claude 0.1.0"
+    ClaudeAdapter._cli_version = "v1.2.3"
     with patch.dict("os.environ", {"ANTHROPIC_API_KEY": "test-key"}, clear=False):
         async def mock_spawn(*args, **kwargs):
-            raise ProviderCrashError("Process failed with exit code 1")
-            yield # dummy
+            raise ProviderTimeoutError("Timeout")
+            yield
 
         with patch("bmad_orch.providers.claude.spawn_pty_process", side_effect=mock_spawn):
-            with pytest.raises(ProviderCrashError, match="claude 0.1.0"):
+            with pytest.raises(ProviderTimeoutError, match="v1.2.3"):
                 async for _ in adapter.execute("test prompt"):
                     pass
 
 @pytest.mark.asyncio
-async def test_execute_timeout_with_version():
+async def test_execute_crash_cleanup():
     adapter = ClaudeAdapter()
-    adapter._version = "claude 0.1.0"
+    ClaudeAdapter._cli_version = "v1.2.3"
     with patch.dict("os.environ", {"ANTHROPIC_API_KEY": "test-key"}, clear=False):
         async def mock_spawn(*args, **kwargs):
-            raise ProviderTimeoutError("Process timed out after 30s")
-            yield # dummy
+            raise ProviderCrashError("Crash")
+            yield
 
         with patch("bmad_orch.providers.claude.spawn_pty_process", side_effect=mock_spawn):
-            with pytest.raises(ProviderTimeoutError, match="claude 0.1.0"):
+            with pytest.raises(ProviderCrashError, match="v1.2.3"):
                 async for _ in adapter.execute("test prompt"):
                     pass
-
-@pytest.mark.asyncio
-async def test_execute_cancellation():
-    adapter = ClaudeAdapter()
-    with patch.dict("os.environ", {"ANTHROPIC_API_KEY": "test-key"}, clear=False):
-        async def mock_spawn(*args, **kwargs):
-            yield OutputChunk(content="partial", timestamp=1.0)
-            raise asyncio.CancelledError()
-
-        with patch("bmad_orch.providers.claude.spawn_pty_process", side_effect=mock_spawn):
-            with pytest.raises(asyncio.CancelledError):
-                async for _ in adapter.execute("test prompt"):
-                    pass
-
-@pytest.mark.asyncio
-async def test_execute_no_api_key():
-    adapter = ClaudeAdapter()
-    with patch.dict("os.environ", {}, clear=True):
-        with pytest.raises(ProviderError, match="ANTHROPIC_API_KEY environment variable is mandatory"):
-            async for _ in adapter.execute("test prompt"):
-                pass

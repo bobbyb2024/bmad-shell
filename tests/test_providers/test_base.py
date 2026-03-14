@@ -22,7 +22,7 @@ def test_mock_provider_execution_id():
     import uuid
 
     class RealMockProvider(ProviderAdapter):
-        def detect(self): return True
+        def detect(self, cli_path=None): return True
         def list_models(self): return []
         async def _execute(self, prompt, **kwargs):
             # No manual execution_id generation here

@@ -6,6 +6,8 @@ import time
 from typing import AsyncIterator, Any
 from bmad_orch.providers import ProviderAdapter, register_adapter, clear_registry
 from bmad_orch.types import OutputChunk
+from bmad_orch.providers.claude import ClaudeAdapter
+from bmad_orch.providers.gemini import GeminiAdapter
 
 VALID_CONFIG_DATA = {
     "providers": {1: {"name": "p1", "cli": "c1", "model": "m1"}},
@@ -48,7 +50,7 @@ class MockProvider(ProviderAdapter):
     def __init__(self, **config):
         self.config = config
 
-    def detect(self) -> bool:
+    def detect(self, cli_path: str | None = None) -> bool:
         return True
 
     def list_models(self) -> list[dict[str, Any]]:
@@ -64,7 +66,12 @@ class MockProvider(ProviderAdapter):
 
 @pytest.fixture(autouse=True)
 def reset_registry():
-    """Clear the provider registry before each test."""
+    """Clear the provider registry and restore defaults before each test."""
     clear_registry()
+    # Manual re-registration to avoid circular import issues
+    register_adapter("claude", ClaudeAdapter)
+    register_adapter("gemini", GeminiAdapter)
     yield
     clear_registry()
+    register_adapter("claude", ClaudeAdapter)
+    register_adapter("gemini", GeminiAdapter)

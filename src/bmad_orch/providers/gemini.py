@@ -34,9 +34,10 @@ class GeminiAdapter(ProviderAdapter):
             re.compile(r"PERMISSION_DENIED", re.IGNORECASE),
         ]
 
-    def detect(self) -> bool:
+    def detect(self, cli_path: str | None = None) -> bool:
         """Detect if the 'gemini' command is available on the system. AC1."""
-        path = shutil.which("gemini")
+        target = cli_path or "gemini"
+        path = shutil.which(target)
         if path:
             GeminiAdapter._cli_path = path
             try:

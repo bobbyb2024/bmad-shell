@@ -19,6 +19,8 @@ def register_adapter(name: str, adapter_cls: type[ProviderAdapter]) -> None:
         raise TypeError(msg)
 
     normalized_name = name.lower()
+    if normalized_name in _registry:
+        raise ValueError(f"Provider '{normalized_name}' already exists in registry.")
     _registry[normalized_name] = adapter_cls
 
 
