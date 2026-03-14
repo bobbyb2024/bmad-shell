@@ -1267,3 +1267,19 @@ To github.com:bobbyb2024/bmad-shell.git
 [2026-03-14 10:06:02]   Finished: 2026-03-14 10:06:02
 [2026-03-14 10:06:02] ╚════════════════════════════════════════════════════════════╝
 [2026-03-14 10:06:02] 
+[2026-03-14 12:14:13] 
+[2026-03-14 12:14:13] ╔══════════════════════════════════════════════════════════╗
+[2026-03-14 12:14:13]   ERROR — HUMAN INTERVENTION REQUIRED
+[2026-03-14 12:14:13] ╠══════════════════════════════════════════════════════════╣
+[2026-03-14 12:14:13]   Step:      [4/11] Claude: Adversarial review (pass 3)
+[2026-03-14 12:14:13]   Command:   claude --dangerously-skip-permissions -p '/bmad-review-adversarial-general Review the story file: _bmad-output/implementation-artifacts/2-1-provider-adapter-interface-detection-framework.md — after the review, automatically apply all fixes directly to the file. Do not ask for confirmation, just make the edits.'
+[2026-03-14 12:14:13]   Exit code: 143
+[2026-03-14 12:14:13]   Elapsed:   11386s
+[2026-03-14 12:14:13]   Time:      2026-03-14 12:14:13
+[2026-03-14 12:14:13]   Log file:  _bmad-output/implementation-artifacts/2-1-provider-adapter-interface-detection-framework-cycle.log
+[2026-03-14 12:14:13]   Cause:     Non-zero exit from CLI
+[2026-03-14 12:14:13] ╠══════════════════════════════════════════════════════════╣
+[2026-03-14 12:14:13]   Review the log file above, fix the issue, then re-run:
+[2026-03-14 12:14:13]     ./run-story-cycle.sh
+[2026-03-14 12:14:13] ╚══════════════════════════════════════════════════════════╝
+[2026-03-14 12:14:13] 
