@@ -1,6 +1,9 @@
 {
   "hooksConfig": {
     "disabled": [
+      "(context-mode hook gemini-cli beforetool) || echo \"{}\"",
+      "(context-mode hook gemini-cli aftertool) || echo \"{}\"",
+      "(context-mode hook gemini-cli afteragent) || echo \"{}\"",
       "(context-mode hook gemini-cli sessionstart) || echo \"{}\""
     ]
   },

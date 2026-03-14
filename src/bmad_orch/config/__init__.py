@@ -9,6 +9,7 @@ from bmad_orch.config.schema import (
     StepConfig,
     validate_config,
 )
+from bmad_orch.config.template import TemplateResolver, resolve_step_prompts
 
 __all__ = [
     "OrchestratorConfig",
@@ -18,6 +19,8 @@ __all__ = [
     "GitConfig",
     "PauseConfig",
     "ErrorConfig",
+    "TemplateResolver",
+    "resolve_step_prompts",
     "validate_config",
     "discover_config_path",
     "load_config_file",

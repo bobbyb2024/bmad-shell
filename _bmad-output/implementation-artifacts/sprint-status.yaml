@@ -1,5 +1,5 @@
 # generated: 2026-03-13
-# last_updated: 2026-03-13
+# last_updated: 2026-03-14
 # project: bmad-shell
 # project_key: NOKEY
 # tracking_system: file-system
@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-03-13
-last_updated: 2026-03-13
+last_updated: 2026-03-14
 project: bmad-shell
 project_key: NOKEY
 tracking_system: file-system
@@ -46,7 +46,7 @@ development_status:
   1-1-project-scaffolding-setup: done
   1-2-configuration-schema-validation-models: done
   1-3-config-file-loading-discovery: done
-  1-4-prompt-template-variable-registry: backlog
+  1-4-prompt-template-variable-registry: done
   1-5-playbook-summary-dry-run: backlog
   epic-1-retrospective: optional
   epic-2: backlog

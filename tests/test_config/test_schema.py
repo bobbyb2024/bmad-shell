@@ -180,7 +180,7 @@ def test_config_error_message_format(valid_config_data):
     with pytest.raises(ConfigError) as excinfo:
         validate_config(valid_config_data)
     msg = str(excinfo.value)
-    assert "Config validation failed:" in msg
+    assert "✗ Config validation failed" in msg
     assert "git -> commit_at" in msg
     assert "input: invalid" in msg
 

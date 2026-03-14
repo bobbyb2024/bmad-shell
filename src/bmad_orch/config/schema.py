@@ -121,5 +121,5 @@ def validate_config(data: dict[str, Any]) -> OrchestratorConfig:
                 part += f" (input: {input_val})"
             msg_parts.append(part)
 
-        full_msg = "Config validation failed:\n" + "\n".join(msg_parts)
+        full_msg = "✗ Config validation failed — fix the following:\n" + "\n".join(msg_parts)
         raise ConfigError(full_msg) from e

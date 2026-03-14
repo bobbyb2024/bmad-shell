@@ -1,3 +1,4 @@
+import traceback
 from typing import Annotated
 
 import typer
@@ -42,8 +43,8 @@ def validate(
 ) -> None:
     """Check config schema and provider availability."""
     try:
-        cfg = get_config(config)
-        console.print("[green]✓ Configuration is valid.[/green]")
+        cfg, source_path = get_config(config)
+        console.print(f"[green]✓ Configuration is valid.[/green] (loaded from {source_path})")
 
         # Report providers and models
         console.print("\n[bold]Detected Configuration:[/bold]")
@@ -54,7 +55,8 @@ def validate(
         console.print(f"[red]{e}[/red]")
         raise typer.Exit(code=2) from e
     except Exception as e:
-        console.print(f"[red]✗ Unexpected error: {e}[/red]")
+        console.print(f"[red]✗ Unexpected error — {e}[/red]", highlight=False)
+        console.print(f"[dim]{traceback.format_exc()}[/dim]", highlight=False)
         raise typer.Exit(code=1) from e
 
 
