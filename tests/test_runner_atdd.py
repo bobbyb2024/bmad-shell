@@ -191,8 +191,8 @@ def test_dependency_injection_coordination(tmp_path):
             runner.config,
             state_path,
             adapter_factory=runner.adapter_factory,
+            git_client=None,
         )
-
 
 def test_atomic_file_state(tmp_path):
     """
@@ -326,3 +326,36 @@ def test_crash_resumption(tmp_path):
     # Run completed successfully
     run_events = [e for e in events if e[0] == "run"]
     assert run_events[0][1] is True
+
+
+def test_runner_git_output_path_validation(tmp_path, monkeypatch):
+    """
+    AC10: Git output path outside repo raises ConfigError during init.
+    """
+    import pathlib
+    from unittest.mock import AsyncMock, MagicMock
+
+    from bmad_orch.engine.runner import Runner
+    from bmad_orch.exceptions import ConfigError
+    
+    cfg = _make_config()
+    cfg.git.enabled = True
+    
+    # Place state path outside a fake repo root
+    state_path = tmp_path / 'out_of_bounds' / 'state.json'
+    
+    runner = Runner(cfg, state_path=state_path, adapter_factory=get_adapter)
+    
+    mock_git_client = MagicMock()
+    # Fake repo root is just tmp_path, while state_path is tmp_path / 'out_of_bounds'
+    mock_git_client.repo_path.resolve.return_value = pathlib.Path('/some/fake/repo/root')
+    
+    # We patch GitClient.create to return our mock
+    import bmad_orch.git
+    with patch.object(bmad_orch.git.GitClient, 'create', new_callable=AsyncMock) as mock_create:
+        mock_create.return_value = mock_git_client
+        # Setting state_path to something that definitely won't be under /some/fake/repo/root
+        runner.state_path = pathlib.Path('/totally/different/path/state.json')
+        
+        with pytest.raises(ConfigError, match='outside the git repository root'):
+            asyncio.run(runner._init_git())

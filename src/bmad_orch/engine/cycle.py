@@ -3,6 +3,7 @@ import logging
 from collections.abc import Callable, Mapping
 from datetime import UTC, datetime
 from pathlib import Path
+from string import Template
 from typing import Any
 
 from structlog.contextvars import bind_contextvars, unbind_contextvars
@@ -21,6 +22,7 @@ from bmad_orch.engine.events import (
 )
 from bmad_orch.engine.prompt_resolver import PromptResolver
 from bmad_orch.exceptions import classify_error
+from bmad_orch.git import GitClient
 from bmad_orch.state.manager import StateManager
 from bmad_orch.state.schema import ErrorRecord, RunState, StepRecord
 from bmad_orch.types import StepOutcome, StepType
@@ -36,6 +38,7 @@ class CycleExecutor:
         config: OrchestratorConfig,
         state_path: Path,
         adapter_factory: Callable[..., Any] | None = None,
+        git_client: GitClient | None = None,
     ) -> None:
         self.emitter = emitter
         self.state_manager = state_manager
@@ -43,6 +46,7 @@ class CycleExecutor:
         self.config = config
         self.state_path = state_path
         self.adapter_factory = adapter_factory
+        self.git_client = git_client
 
     def log_error(self, error: Exception, next_action: str) -> None:
         classification = classify_error(error)
@@ -72,6 +76,44 @@ class CycleExecutor:
             ))
         else:
             self.log_error(error, "Execution continues to the next retry or step")
+
+    async def _handle_git_commit(self, granularity: str, name: str, success: bool) -> None:
+        """Handle git commit based on configuration."""
+        if not self.git_client or self.config.git.commit_at != granularity:
+            return
+
+        status = "success" if success else "failure"
+        
+        # Default template
+        default_msg = "chore(bmad-orch): auto-commit after $granularity ($status) — $name"
+        template_str = self.config.git.commit_message_template or default_msg
+        template = Template(template_str)
+        message = template.safe_substitute(granularity=granularity, status=status, name=name)
+
+        try:
+            paths_to_add = ["_bmad-output", "logs"]
+            if self.state_path and self.state_path.exists():
+                paths_to_add.append(str(self.state_path))
+            
+            await self.git_client.add(paths_to_add)
+            await self.git_client.commit(message)
+        except Exception as e:
+            # Story AC8: log failure rather than failing silently, and don't fail the whole runner
+            logger.warning(f"Git commit failed: {e}")
+
+    async def _handle_git_push(self, granularity: str) -> None:
+        """Handle git push based on configuration."""
+        if not self.git_client or self.config.git.push_at != granularity:
+            return
+
+        try:
+            await self.git_client.push(
+                remote=self.config.git.remote,
+                branch=self.config.git.branch
+            )
+        except Exception as e:
+            # Story AC8: log failure as warning to prevent failing the entire orchestrator
+            logger.warning(f"Git push failed: {e}")
 
     async def execute_cycle(
         self,
@@ -232,6 +274,9 @@ class CycleExecutor:
 
                         self.emitter.emit(StepCompleted(step_name=step_name, step_index=step_idx, success=success))
 
+                        # Handle git commit (step granularity)
+                        await self._handle_git_commit("step", step_name, success)
+
                         if not success:
                             if recoverable:
                                 # AC2: Recoverable error — logged already, continue to next step
@@ -248,6 +293,9 @@ class CycleExecutor:
                             self.emitter.emit(CycleCompleted(
                                 cycle_number=cycle_num, provider_name=first_provider_name, success=False,
                             ))
+                            # Handle git commit and push (cycle granularity) on failure
+                            await self._handle_git_commit("cycle", rep_id, False)
+                            await self._handle_git_push("cycle")
                             return state
 
                         # AC4: Step Pauses
@@ -272,6 +320,10 @@ class CycleExecutor:
                 self.emitter.emit(CycleCompleted(
                     cycle_number=cycle_num, provider_name=first_provider_name, success=True,
                 ))
+
+                # Handle git commit and push (cycle granularity)
+                await self._handle_git_commit("cycle", rep_id, True)
+                await self._handle_git_push("cycle")
 
                 # AC5: Cycle Pauses
                 if cycle_idx < cycle_config.repeat - 1 and cycle_config.pause_between_cycles:

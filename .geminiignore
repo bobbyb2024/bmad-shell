@@ -1,0 +1,15 @@
+.claude/
+.venv/
+.git/
+.cursor/
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+.ruff_cache/
+.import_linter_cache/
+logs/
+.coverage
+coverage.xml
+htmlcov/
+xmlcov/

@@ -26,3 +26,8 @@ coverage.xml
 bmad-orch-state.json
 bmad-orch-state.tmp
 bmad-orch-state.backup.json
+
+# Tooling and large cache directories
+.claude/
+.cursor/
+logs/

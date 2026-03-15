@@ -11,6 +11,7 @@ from bmad_orch.engine.cycle import CycleExecutor
 from bmad_orch.engine.emitter import EventEmitter
 from bmad_orch.engine.events import RunCompleted
 from bmad_orch.engine.prompt_resolver import PromptResolver
+from bmad_orch.git import GitClient
 from bmad_orch.state.manager import StateManager
 from bmad_orch.state.schema import RunState
 from bmad_orch.types import StepOutcome
@@ -34,6 +35,27 @@ class Runner:
         self.emitter = EventEmitter()
         self.state_manager = StateManager()
         self.prompt_resolver = PromptResolver()
+        self.git_client: GitClient | None = None
+
+    async def _init_git(self) -> None:
+        """Initialize GitClient if enabled and validate environment."""
+        if not self.config.git.enabled:
+            return
+
+        # Initialize GitClient with repo validation
+        self.git_client = await GitClient.create()
+        
+        # AC10: Validate dynamic output paths are within the git repo
+        repo_root = self.git_client.repo_path.resolve()
+        
+        output_paths = [pathlib.Path("_bmad-output").resolve()]
+        if self.state_path:
+            output_paths.append(self.state_path.parent.resolve())
+
+        for path in output_paths:
+            if repo_root not in path.parents and path != repo_root:
+                from bmad_orch.exceptions import ConfigError
+                raise ConfigError(f"Output path '{path}' is outside the git repository root '{repo_root}'")
 
     async def run(self, dry_run: bool = False, template_context: Mapping[str, str] | None = None) -> None:
         """Execute the orchestration plan.
@@ -65,6 +87,9 @@ class Runner:
                     self.emitter.emit(CycleCompleted(cycle_number=cycle_num, provider_name=provider_name, success=True))
             return
 
+        # Initialize git if enabled
+        await self._init_git()
+
         if self.state_path:
             self.state = self.state_manager.load(self.state_path)
             new_ctx = dict(self.state.template_context)
@@ -80,6 +105,7 @@ class Runner:
             self.config,
             self.state_path or pathlib.Path("/dev/null"),
             adapter_factory=self.adapter_factory,
+            git_client=self.git_client,
         )
 
         cycle_keys = list(self.config.cycles.keys())
@@ -135,3 +161,13 @@ class Runner:
             elapsed_time=elapsed,
             error_count=error_count
         ))
+
+        # AC5: Handle git push at end
+        if self.git_client and self.config.git.push_at == "end":
+            try:
+                await self.git_client.push(
+                    remote=self.config.git.remote,
+                    branch=self.config.git.branch
+                )
+            except Exception as e:
+                logger.warning(f"Git push failed at end: {e}")

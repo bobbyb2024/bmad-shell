@@ -57,12 +57,12 @@ def test_missing_git_raises_config_error(valid_config_data):
 
 
 def test_invalid_enum_value_raises_config_error_listing_options(valid_config_data):
-    valid_config_data["git"]["commit_at"] = "never"
+    valid_config_data["git"]["commit_at"] = "magical"
     with pytest.raises(ConfigError) as excinfo:
         validate_config(valid_config_data)
     assert "git -> commit_at" in str(excinfo.value)
-    # Pydantic v2 error message for enums usually contains valid options
-    assert "input: never" in str(excinfo.value)
+    # Pydantic v2 error message for literals usually contains valid options
+    assert "input: magical" in str(excinfo.value)
 
 
 def test_invalid_step_type_enum_raises_config_error(valid_config_data):

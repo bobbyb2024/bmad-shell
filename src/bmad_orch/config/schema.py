@@ -1,9 +1,9 @@
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator, model_validator
 
 from bmad_orch.exceptions import ConfigError, ConfigProviderError
-from bmad_orch.types import StepType, Timing
+from bmad_orch.types import StepType
 
 
 class ProviderConfig(BaseModel):
@@ -49,8 +49,18 @@ class CycleConfig(BaseModel):
 class GitConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    commit_at: Timing
-    push_at: Timing
+    enabled: bool = Field(default=False)
+    commit_at: Literal["step", "cycle", "never"] = Field(default="cycle")
+    push_at: Literal["cycle", "end", "never"] = Field(default="end")
+    remote: str = Field(default="origin")
+    branch: str | None = Field(default=None)
+    commit_message_template: str | None = Field(default=None)
+
+    @model_validator(mode="after")
+    def validate_logic(self) -> "GitConfig":
+        if self.commit_at == "never" and self.push_at != "never":
+            raise ValueError("push_at must be 'never' if commit_at is 'never'")
+        return self
 
 
 class PauseConfig(BaseModel):

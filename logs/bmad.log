@@ -537,3 +537,151 @@
   Invalid JSON: expected ident at line 1 column 2 [type=json_invalid, input_value='not json', input_type=str]
     For further information visit https://errors.pydantic.dev/2.12/v/json_invalid
 2026-03-15T02:50:45.801410Z ERROR [source=bmad_orch] Failed to rename corrupt state file /tmp/pytest-of-bobby/pytest-51/test_load_corrupt_rename_failu0/bmad-orch-state.json: Simulated rename failure
+2026-03-15T03:50:09.061245Z INFO  [key=value source=test_logging] test message
+2026-03-15T03:50:09.068496Z INFO  [step_id=123 source=test_logging] machine test
+2026-03-15T03:50:09.069952Z INFO  [source=bmad_orch] stdlib bridge message
+2026-03-15T03:50:09.070473Z DEBUG [source=bmad_orch] Using selector: EpollSelector
+2026-03-15T03:50:09.178394Z INFO  [step_id=step-1 provider_name=claude extra_ctx=val source=test_logging] step log
+2026-03-15T03:50:09.178981Z INFO  [provider_name=gemini step_id=ctx-step source=test_logging] contextvar step log
+2026-03-15T03:50:09.179484Z INFO  [step_id=step-1 source=test_logging] msg 1
+2026-03-15T03:50:09.179561Z INFO  [step_id=step-2 source=test_logging] msg 2
+2026-03-15T03:50:09.179614Z INFO  [step_id=step-3 source=test_logging] msg 0
+2026-03-15T03:50:09.179665Z INFO  [step_id=step-3 source=test_logging] msg 1
+2026-03-15T03:50:09.179709Z INFO  [step_id=step-3 source=test_logging] msg 2
+2026-03-15T03:50:09.179754Z INFO  [step_id=step-3 source=test_logging] msg 3
+2026-03-15T03:50:09.179796Z INFO  [step_id=step-3 source=test_logging] msg 4
+2026-03-15T03:50:09.179835Z INFO  [step_id=step-3 source=test_logging] msg 5
+2026-03-15T03:50:09.179881Z INFO  [step_id=step-3 source=test_logging] msg 6
+2026-03-15T03:50:09.179920Z INFO  [step_id=step-3 source=test_logging] msg 7
+2026-03-15T03:50:09.179956Z INFO  [step_id=step-3 source=test_logging] msg 8
+2026-03-15T03:50:09.187463Z INFO  [step_id=step-4 source=test_logging] msg step 4
+2026-03-15T03:50:09.188139Z INFO  [provider_name=test step_id=std-step source=bmad_orch] stdlib step message
+2026-03-15T03:50:09.188623Z INFO  [step_id=step-100 source=test_src provider_name=claude extra=val] test log
+2026-03-15T03:50:09.417219Z ERROR [source=bmad_orch] Cycle type beta failed. Aborting remaining cycle types.
+2026-03-15T03:50:09.449187Z INFO  [source=bmad_orch] Skipping completed cycle type alpha
+2026-03-15T03:50:09.456053Z WARN  [source=bmad_orch] Configuration hash mismatch! State has old-hash, but current config has new-hash.
+2026-03-15T03:50:09.457469Z ERROR [source=bmad_orch] Failed to validate state file /tmp/pytest-of-bobby/pytest-52/test_load_corrupt_renames0/bmad-orch-state.json: 1 validation error for RunState
+  Invalid JSON: expected ident at line 1 column 2 [type=json_invalid, input_value='not json', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.12/v/json_invalid
+2026-03-15T03:50:09.457569Z INFO  [source=bmad_orch] Renamed corrupt state file to /tmp/pytest-of-bobby/pytest-52/test_load_corrupt_renames0/bmad-orch-state.json.corrupt.20260315035009
+2026-03-15T03:50:09.458405Z WARN  [source=bmad_orch] State file /tmp/pytest-of-bobby/pytest-52/test_load_empty_file_raises_an0/bmad-orch-state.json is empty. Treating as corrupt.
+2026-03-15T03:50:09.458488Z INFO  [source=bmad_orch] Renamed corrupt state file to /tmp/pytest-of-bobby/pytest-52/test_load_empty_file_raises_an0/bmad-orch-state.json.corrupt.20260315035009
+2026-03-15T03:50:09.461494Z INFO  [source=bmad_orch] Cleaned up stale temp file: /tmp/pytest-of-bobby/pytest-52/test_cleanup_stale_tmp0/.bmad-orch-state.json.old-uuid.tmp
+2026-03-15T03:50:09.462262Z ERROR [source=bmad_orch] Failed to save state to /tmp/pytest-of-bobby/pytest-52/test_save_error_handling0/bmad-orch-state.json: [Errno 13] Permission denied: '/tmp/pytest-of-bobby/pytest-52/test_save_error_handling0/.bmad-orch-state.json.b22132b1-3abb-49cf-be35-e2f23b43d0da.tmp'
+2026-03-15T03:50:09.463092Z ERROR [source=bmad_orch] Schema version mismatch: expected 1, got 99
+2026-03-15T03:50:09.463189Z INFO  [source=bmad_orch] Renamed corrupt state file to /tmp/pytest-of-bobby/pytest-52/test_load_schema_version_misma0/bmad-orch-state.json.corrupt.20260315035009
+2026-03-15T03:50:09.463981Z ERROR [source=bmad_orch] Failed to validate state file /tmp/pytest-of-bobby/pytest-52/test_load_corrupt_rename_failu0/bmad-orch-state.json: 1 validation error for RunState
+  Invalid JSON: expected ident at line 1 column 2 [type=json_invalid, input_value='not json', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.12/v/json_invalid
+2026-03-15T03:50:09.464070Z ERROR [source=bmad_orch] Failed to rename corrupt state file /tmp/pytest-of-bobby/pytest-52/test_load_corrupt_rename_failu0/bmad-orch-state.json: Simulated rename failure
+2026-03-15T03:51:23.571322Z INFO  [key=value source=test_logging] test message
+2026-03-15T03:51:23.572424Z INFO  [step_id=123 source=test_logging] machine test
+2026-03-15T03:51:23.574780Z INFO  [source=bmad_orch] stdlib bridge message
+2026-03-15T03:51:23.575629Z DEBUG [source=bmad_orch] Using selector: EpollSelector
+2026-03-15T03:51:23.681049Z INFO  [step_id=step-1 provider_name=claude extra_ctx=val source=test_logging] step log
+2026-03-15T03:51:23.681616Z INFO  [step_id=ctx-step provider_name=gemini source=test_logging] contextvar step log
+2026-03-15T03:51:23.682167Z INFO  [step_id=step-1 source=test_logging] msg 1
+2026-03-15T03:51:23.682244Z INFO  [step_id=step-2 source=test_logging] msg 2
+2026-03-15T03:51:23.682296Z INFO  [step_id=step-3 source=test_logging] msg 0
+2026-03-15T03:51:23.682343Z INFO  [step_id=step-3 source=test_logging] msg 1
+2026-03-15T03:51:23.682384Z INFO  [step_id=step-3 source=test_logging] msg 2
+2026-03-15T03:51:23.682427Z INFO  [step_id=step-3 source=test_logging] msg 3
+2026-03-15T03:51:23.682467Z INFO  [step_id=step-3 source=test_logging] msg 4
+2026-03-15T03:51:23.682506Z INFO  [step_id=step-3 source=test_logging] msg 5
+2026-03-15T03:51:23.682541Z INFO  [step_id=step-3 source=test_logging] msg 6
+2026-03-15T03:51:23.682577Z INFO  [step_id=step-3 source=test_logging] msg 7
+2026-03-15T03:51:23.682613Z INFO  [step_id=step-3 source=test_logging] msg 8
+2026-03-15T03:51:23.682667Z INFO  [step_id=step-4 source=test_logging] msg step 4
+2026-03-15T03:51:23.683220Z INFO  [step_id=std-step provider_name=test source=bmad_orch] stdlib step message
+2026-03-15T03:51:23.683724Z INFO  [step_id=step-100 source=test_src provider_name=claude extra=val] test log
+2026-03-15T03:51:23.914603Z ERROR [source=bmad_orch] Cycle type beta failed. Aborting remaining cycle types.
+2026-03-15T03:51:23.920584Z INFO  [source=bmad_orch] Skipping completed cycle type alpha
+2026-03-15T03:51:23.927668Z WARN  [source=bmad_orch] Configuration hash mismatch! State has old-hash, but current config has new-hash.
+2026-03-15T03:51:23.929101Z ERROR [source=bmad_orch] Failed to validate state file /tmp/pytest-of-bobby/pytest-53/test_load_corrupt_renames0/bmad-orch-state.json: 1 validation error for RunState
+  Invalid JSON: expected ident at line 1 column 2 [type=json_invalid, input_value='not json', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.12/v/json_invalid
+2026-03-15T03:51:23.929209Z INFO  [source=bmad_orch] Renamed corrupt state file to /tmp/pytest-of-bobby/pytest-53/test_load_corrupt_renames0/bmad-orch-state.json.corrupt.20260315035123
+2026-03-15T03:51:23.930038Z WARN  [source=bmad_orch] State file /tmp/pytest-of-bobby/pytest-53/test_load_empty_file_raises_an0/bmad-orch-state.json is empty. Treating as corrupt.
+2026-03-15T03:51:23.930126Z INFO  [source=bmad_orch] Renamed corrupt state file to /tmp/pytest-of-bobby/pytest-53/test_load_empty_file_raises_an0/bmad-orch-state.json.corrupt.20260315035123
+2026-03-15T03:51:23.933099Z INFO  [source=bmad_orch] Cleaned up stale temp file: /tmp/pytest-of-bobby/pytest-53/test_cleanup_stale_tmp0/.bmad-orch-state.json.old-uuid.tmp
+2026-03-15T03:51:23.933872Z ERROR [source=bmad_orch] Failed to save state to /tmp/pytest-of-bobby/pytest-53/test_save_error_handling0/bmad-orch-state.json: [Errno 13] Permission denied: '/tmp/pytest-of-bobby/pytest-53/test_save_error_handling0/.bmad-orch-state.json.e6f714f0-93d6-4f52-b78e-8db8f0d8604a.tmp'
+2026-03-15T03:51:23.934667Z ERROR [source=bmad_orch] Schema version mismatch: expected 1, got 99
+2026-03-15T03:51:23.934756Z INFO  [source=bmad_orch] Renamed corrupt state file to /tmp/pytest-of-bobby/pytest-53/test_load_schema_version_misma0/bmad-orch-state.json.corrupt.20260315035123
+2026-03-15T03:51:23.935540Z ERROR [source=bmad_orch] Failed to validate state file /tmp/pytest-of-bobby/pytest-53/test_load_corrupt_rename_failu0/bmad-orch-state.json: 1 validation error for RunState
+  Invalid JSON: expected ident at line 1 column 2 [type=json_invalid, input_value='not json', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.12/v/json_invalid
+2026-03-15T03:51:23.935624Z ERROR [source=bmad_orch] Failed to rename corrupt state file /tmp/pytest-of-bobby/pytest-53/test_load_corrupt_rename_failu0/bmad-orch-state.json: Simulated rename failure
+2026-03-15T03:51:49.177603Z INFO  [key=value source=test_logging] test message
+2026-03-15T03:51:49.178720Z INFO  [step_id=123 source=test_logging] machine test
+2026-03-15T03:51:49.181089Z INFO  [source=bmad_orch] stdlib bridge message
+2026-03-15T03:51:49.181653Z DEBUG [source=bmad_orch] Using selector: EpollSelector
+2026-03-15T03:51:49.285657Z INFO  [step_id=step-1 provider_name=claude extra_ctx=val source=test_logging] step log
+2026-03-15T03:51:49.286244Z INFO  [step_id=ctx-step provider_name=gemini source=test_logging] contextvar step log
+2026-03-15T03:51:49.286741Z INFO  [step_id=step-1 source=test_logging] msg 1
+2026-03-15T03:51:49.286815Z INFO  [step_id=step-2 source=test_logging] msg 2
+2026-03-15T03:51:49.286871Z INFO  [step_id=step-3 source=test_logging] msg 0
+2026-03-15T03:51:49.286916Z INFO  [step_id=step-3 source=test_logging] msg 1
+2026-03-15T03:51:49.286955Z INFO  [step_id=step-3 source=test_logging] msg 2
+2026-03-15T03:51:49.286993Z INFO  [step_id=step-3 source=test_logging] msg 3
+2026-03-15T03:51:49.287031Z INFO  [step_id=step-3 source=test_logging] msg 4
+2026-03-15T03:51:49.287067Z INFO  [step_id=step-3 source=test_logging] msg 5
+2026-03-15T03:51:49.287102Z INFO  [step_id=step-3 source=test_logging] msg 6
+2026-03-15T03:51:49.287138Z INFO  [step_id=step-3 source=test_logging] msg 7
+2026-03-15T03:51:49.287174Z INFO  [step_id=step-3 source=test_logging] msg 8
+2026-03-15T03:51:49.287350Z INFO  [step_id=step-4 source=test_logging] msg step 4
+2026-03-15T03:51:49.287902Z INFO  [step_id=std-step provider_name=test source=bmad_orch] stdlib step message
+2026-03-15T03:51:49.288402Z INFO  [step_id=step-100 source=test_src provider_name=claude extra=val] test log
+2026-03-15T03:51:49.515437Z ERROR [source=bmad_orch] Cycle type beta failed. Aborting remaining cycle types.
+2026-03-15T03:51:49.521496Z INFO  [source=bmad_orch] Skipping completed cycle type alpha
+2026-03-15T03:51:49.528923Z WARN  [source=bmad_orch] Configuration hash mismatch! State has old-hash, but current config has new-hash.
+2026-03-15T03:51:49.530364Z ERROR [source=bmad_orch] Failed to validate state file /tmp/pytest-of-bobby/pytest-54/test_load_corrupt_renames0/bmad-orch-state.json: 1 validation error for RunState
+  Invalid JSON: expected ident at line 1 column 2 [type=json_invalid, input_value='not json', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.12/v/json_invalid
+2026-03-15T03:51:49.530462Z INFO  [source=bmad_orch] Renamed corrupt state file to /tmp/pytest-of-bobby/pytest-54/test_load_corrupt_renames0/bmad-orch-state.json.corrupt.20260315035149
+2026-03-15T03:51:49.531269Z WARN  [source=bmad_orch] State file /tmp/pytest-of-bobby/pytest-54/test_load_empty_file_raises_an0/bmad-orch-state.json is empty. Treating as corrupt.
+2026-03-15T03:51:49.531363Z INFO  [source=bmad_orch] Renamed corrupt state file to /tmp/pytest-of-bobby/pytest-54/test_load_empty_file_raises_an0/bmad-orch-state.json.corrupt.20260315035149
+2026-03-15T03:51:49.534311Z INFO  [source=bmad_orch] Cleaned up stale temp file: /tmp/pytest-of-bobby/pytest-54/test_cleanup_stale_tmp0/.bmad-orch-state.json.old-uuid.tmp
+2026-03-15T03:51:49.535096Z ERROR [source=bmad_orch] Failed to save state to /tmp/pytest-of-bobby/pytest-54/test_save_error_handling0/bmad-orch-state.json: [Errno 13] Permission denied: '/tmp/pytest-of-bobby/pytest-54/test_save_error_handling0/.bmad-orch-state.json.31c6b579-947b-4d0b-a92a-ac1a89d4bda4.tmp'
+2026-03-15T03:51:49.535891Z ERROR [source=bmad_orch] Schema version mismatch: expected 1, got 99
+2026-03-15T03:51:49.535982Z INFO  [source=bmad_orch] Renamed corrupt state file to /tmp/pytest-of-bobby/pytest-54/test_load_schema_version_misma0/bmad-orch-state.json.corrupt.20260315035149
+2026-03-15T03:51:49.536754Z ERROR [source=bmad_orch] Failed to validate state file /tmp/pytest-of-bobby/pytest-54/test_load_corrupt_rename_failu0/bmad-orch-state.json: 1 validation error for RunState
+  Invalid JSON: expected ident at line 1 column 2 [type=json_invalid, input_value='not json', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.12/v/json_invalid
+2026-03-15T03:51:49.536841Z ERROR [source=bmad_orch] Failed to rename corrupt state file /tmp/pytest-of-bobby/pytest-54/test_load_corrupt_rename_failu0/bmad-orch-state.json: Simulated rename failure
+2026-03-15T04:00:19.408021Z INFO  [key=value source=test_logging] test message
+2026-03-15T04:00:19.409404Z INFO  [step_id=123 source=test_logging] machine test
+2026-03-15T04:00:19.412003Z INFO  [source=bmad_orch] stdlib bridge message
+2026-03-15T04:00:19.412930Z DEBUG [source=bmad_orch] Using selector: EpollSelector
+2026-03-15T04:00:19.518765Z INFO  [step_id=step-1 provider_name=claude extra_ctx=val source=test_logging] step log
+2026-03-15T04:00:19.519726Z INFO  [provider_name=gemini step_id=ctx-step source=test_logging] contextvar step log
+2026-03-15T04:00:19.520635Z INFO  [step_id=step-1 source=test_logging] msg 1
+2026-03-15T04:00:19.520756Z INFO  [step_id=step-2 source=test_logging] msg 2
+2026-03-15T04:00:19.520841Z INFO  [step_id=step-3 source=test_logging] msg 0
+2026-03-15T04:00:19.520930Z INFO  [step_id=step-3 source=test_logging] msg 1
+2026-03-15T04:00:19.521006Z INFO  [step_id=step-3 source=test_logging] msg 2
+2026-03-15T04:00:19.521081Z INFO  [step_id=step-3 source=test_logging] msg 3
+2026-03-15T04:00:19.521154Z INFO  [step_id=step-3 source=test_logging] msg 4
+2026-03-15T04:00:19.521225Z INFO  [step_id=step-3 source=test_logging] msg 5
+2026-03-15T04:00:19.521294Z INFO  [step_id=step-3 source=test_logging] msg 6
+2026-03-15T04:00:19.521365Z INFO  [step_id=step-3 source=test_logging] msg 7
+2026-03-15T04:00:19.521435Z INFO  [step_id=step-3 source=test_logging] msg 8
+2026-03-15T04:00:19.521669Z INFO  [step_id=step-4 source=test_logging] msg step 4
+2026-03-15T04:00:19.522609Z INFO  [provider_name=test step_id=std-step source=bmad_orch] stdlib step message
+2026-03-15T04:00:19.523461Z INFO  [step_id=step-100 source=test_src provider_name=claude extra=val] test log
+2026-03-15T04:00:19.809464Z ERROR [source=bmad_orch] Cycle type beta failed. Aborting remaining cycle types.
+2026-03-15T04:00:19.819719Z INFO  [source=bmad_orch] Skipping completed cycle type alpha
+2026-03-15T04:00:19.836139Z WARN  [source=bmad_orch] Configuration hash mismatch! State has old-hash, but current config has new-hash.
+2026-03-15T04:00:19.838528Z ERROR [source=bmad_orch] Failed to validate state file /tmp/pytest-of-bobby/pytest-61/test_load_corrupt_renames0/bmad-orch-state.json: 1 validation error for RunState
+  Invalid JSON: expected ident at line 1 column 2 [type=json_invalid, input_value='not json', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.12/v/json_invalid
+2026-03-15T04:00:19.838696Z INFO  [source=bmad_orch] Renamed corrupt state file to /tmp/pytest-of-bobby/pytest-61/test_load_corrupt_renames0/bmad-orch-state.json.corrupt.20260315040019
+2026-03-15T04:00:19.840100Z WARN  [source=bmad_orch] State file /tmp/pytest-of-bobby/pytest-61/test_load_empty_file_raises_an0/bmad-orch-state.json is empty. Treating as corrupt.
+2026-03-15T04:00:19.840259Z INFO  [source=bmad_orch] Renamed corrupt state file to /tmp/pytest-of-bobby/pytest-61/test_load_empty_file_raises_an0/bmad-orch-state.json.corrupt.20260315040019
+2026-03-15T04:00:19.845686Z INFO  [source=bmad_orch] Cleaned up stale temp file: /tmp/pytest-of-bobby/pytest-61/test_cleanup_stale_tmp0/.bmad-orch-state.json.old-uuid.tmp
+2026-03-15T04:00:19.846972Z ERROR [source=bmad_orch] Failed to save state to /tmp/pytest-of-bobby/pytest-61/test_save_error_handling0/bmad-orch-state.json: [Errno 13] Permission denied: '/tmp/pytest-of-bobby/pytest-61/test_save_error_handling0/.bmad-orch-state.json.07a8ad47-5aba-4ff9-8c3a-d4299c13cd07.tmp'
+2026-03-15T04:00:19.848265Z ERROR [source=bmad_orch] Schema version mismatch: expected 1, got 99
+2026-03-15T04:00:19.848403Z INFO  [source=bmad_orch] Renamed corrupt state file to /tmp/pytest-of-bobby/pytest-61/test_load_schema_version_misma0/bmad-orch-state.json.corrupt.20260315040019
+2026-03-15T04:00:19.849643Z ERROR [source=bmad_orch] Failed to validate state file /tmp/pytest-of-bobby/pytest-61/test_load_corrupt_rename_failu0/bmad-orch-state.json: 1 validation error for RunState
+  Invalid JSON: expected ident at line 1 column 2 [type=json_invalid, input_value='not json', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.12/v/json_invalid
+2026-03-15T04:00:19.849775Z ERROR [source=bmad_orch] Failed to rename corrupt state file /tmp/pytest-of-bobby/pytest-61/test_load_corrupt_rename_failu0/bmad-orch-state.json: Simulated rename failure
