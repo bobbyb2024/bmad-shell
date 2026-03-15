@@ -24,7 +24,7 @@ class GeminiAdapter(ProviderAdapter):
     _cli_version: str = "Version Unknown"
 
     def __init__(self, **config: Any) -> None:  # noqa: ANN401
-        self.config = config
+        super().__init__(**config)
         # Regex for AC7: Corrupted/Provider Error
         self._corruption_patterns = [
             re.compile(r"<html>", re.IGNORECASE),
@@ -172,7 +172,14 @@ class GeminiAdapter(ProviderAdapter):
             current_meta = {**execution_meta, "attempt": attempts}
 
             try:
-                async for chunk in spawn_pty_process(cmd, timeout=timeout, env=env, grace_period=grace_period):
+                async for chunk in spawn_pty_process(
+                    cmd,
+                    timeout=timeout,
+                    env=env,
+                    grace_period=grace_period,
+                    process_callback=self._process_callback,
+                    process_done_callback=self._process_done_callback,
+                ):
                     # AC7: Defensive Parsing
                     content = chunk.content
                     

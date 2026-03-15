@@ -1,6 +1,6 @@
 import json
 from datetime import UTC
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 import yaml
@@ -33,10 +33,12 @@ def config_file(tmp_path):
         yaml.dump(d, f)
     return cfg_path
 
+@patch("bmad_orch.cli.Runner")
 @patch("bmad_orch.cli.typer.getchar")
-def test_cli_preflight_first_run_proceed(mock_getchar, config_file):
+def test_cli_preflight_first_run_proceed(mock_getchar, mock_runner, config_file):
     # AC2: First run waits for confirmation
     mock_getchar.return_value = "\r"
+    mock_runner.return_value.run = AsyncMock()
     result = runner.invoke(app, ["start", "--config", str(config_file)])
     assert result.exit_code == 0
     assert "PRE-FLIGHT SUMMARY" in result.stdout
@@ -49,15 +51,19 @@ def test_cli_preflight_quit(mock_getchar, config_file):
     result = runner.invoke(app, ["start", "--config", str(config_file)])
     assert result.exit_code == 130
 
-def test_cli_no_preflight(config_file):
+@patch("bmad_orch.cli.Runner")
+def test_cli_no_preflight(mock_runner, config_file):
     # AC6: --no-preflight skips summary
+    mock_runner.return_value.run = AsyncMock()
     result = runner.invoke(app, ["start", "--config", str(config_file), "--no-preflight"])
     assert result.exit_code == 0
     assert "PRE-FLIGHT SUMMARY" not in result.stdout
 
+@patch("bmad_orch.cli.Runner")
 @patch("bmad_orch.cli.handle_auto_dismiss")
-def test_cli_preflight_subsequent_run_auto_dismiss(mock_dismiss, config_file, tmp_path):
+def test_cli_preflight_subsequent_run_auto_dismiss(mock_dismiss, mock_runner, config_file, tmp_path):
     # AC3: Subsequent run with same hash auto-dismisses
+    mock_runner.return_value.run = AsyncMock()
     state_path = config_file.parent / "bmad-orch-state.json"
     import hashlib
     from datetime import datetime
@@ -88,36 +94,45 @@ def test_cli_preflight_subsequent_run_auto_dismiss(mock_dismiss, config_file, tm
     assert result.exit_code == 0
     mock_dismiss.assert_called_once()
 
+@patch("bmad_orch.cli.Runner")
 @patch("bmad_orch.cli.open_editor")
 @patch("bmad_orch.cli.typer.getchar")
-def test_cli_preflight_modify_flow(mock_getchar, mock_editor, config_file):
+def test_cli_preflight_modify_flow(mock_getchar, mock_editor, mock_runner, config_file):
     # AC4: Modify flow re-validates and prompts again
     # Initial confirmation: 'm' (modify)
     # After editor: Enter (proceed)
     mock_getchar.side_effect = ["m", "\r"]
     mock_editor.return_value = True
+    
+    mock_runner.return_value.run = AsyncMock()
 
     result = runner.invoke(app, ["start", "--config", str(config_file)])
     assert result.exit_code == 0
     mock_editor.assert_called_once()
 
+@patch("bmad_orch.cli.Runner")
 @patch("bmad_orch.cli.open_editor")
 @patch("bmad_orch.cli.typer.getchar")
-def test_cli_preflight_modify_no_editor_found(mock_getchar, mock_editor, config_file):
+def test_cli_preflight_modify_no_editor_found(mock_getchar, mock_editor, mock_runner, config_file):
     # AC4 / Task 4.8: No editor found → error message, return to summary confirmation
     # First getchar: 'm' (modify), editor fails, falls back to confirmation
     # Second getchar: Enter (proceed)
     mock_getchar.side_effect = ["m", "\r"]
     mock_editor.return_value = False  # Simulates no editor found
+    
+    # Mock Runner.run to avoid actual execution
+    mock_runner.return_value.run = AsyncMock()
 
     result = runner.invoke(app, ["start", "--config", str(config_file)])
     assert result.exit_code == 0
     mock_editor.assert_called_once()
     # After editor failure, should return to confirmation (handle_confirmation called again)
 
+@patch("bmad_orch.cli.Runner")
 @patch("bmad_orch.cli.typer.getchar")
-def test_cli_preflight_config_changed(mock_getchar, config_file):
+def test_cli_preflight_config_changed(mock_getchar, mock_runner, config_file):
     # AC2: Config changed triggers mandatory confirmation
+    mock_runner.return_value.run = AsyncMock()
     state_path = config_file.parent / "bmad-orch-state.json"
     with state_path.open("w") as f:
         json.dump({"config_hash": "old-hash-is-different"}, f)
@@ -128,9 +143,11 @@ def test_cli_preflight_config_changed(mock_getchar, config_file):
     assert "PRE-FLIGHT SUMMARY" in result.stdout
     assert "Confirmation:" in result.stdout
 
+@patch("bmad_orch.cli.Runner")
 @patch("bmad_orch.cli.typer.getchar")
-def test_cli_start_headless(mock_getchar, config_file):
+def test_cli_start_headless(mock_getchar, mock_runner, config_file):
     # AC6/Headless: --headless with --no-preflight skips pre-flight and runs
+    mock_runner.return_value.run = AsyncMock()
     mock_getchar.return_value = "\r"
     result = runner.invoke(app, ["start", "--config", str(config_file), "--headless", "--no-preflight"])
     assert result.exit_code == 0

@@ -6,13 +6,19 @@ import os
 import signal
 import time
 from collections.abc import AsyncIterator
+from typing import Any
 
 from bmad_orch.exceptions import ProviderCrashError, ProviderTimeoutError
 from bmad_orch.types import OutputChunk
 
 
 async def spawn_pty_process(
-    cmd: list[str], timeout: float = 30.0, env: dict[str, str] | None = None, grace_period: float = 2.0
+    cmd: list[str],
+    timeout: float = 30.0,
+    env: dict[str, str] | None = None,
+    grace_period: float = 2.0,
+    process_callback: Any = None,
+    process_done_callback: Any = None,
 ) -> AsyncIterator[OutputChunk]:
     """Spawn a process in a PTY and yield output chunks."""
     if os.name != "posix":
@@ -34,6 +40,8 @@ async def spawn_pty_process(
             start_new_session=True,
             env=env,
         )
+        if process_callback:
+            process_callback(process)
     finally:
         # We MUST close slave_fd in the parent process as soon as child has it
         os.close(slave_fd)
@@ -131,3 +139,6 @@ async def spawn_pty_process(
                 except (ProcessLookupError, PermissionError):
                     process.kill()
                 await process.wait()
+        
+        if process_done_callback:
+            process_done_callback(process)

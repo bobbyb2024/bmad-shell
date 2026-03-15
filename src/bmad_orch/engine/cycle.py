@@ -47,6 +47,31 @@ class CycleExecutor:
         self.state_path = state_path
         self.adapter_factory = adapter_factory
         self.git_client = git_client
+        self._running_processes: set[asyncio.subprocess.Process] = set()
+
+    async def cleanup_processes(self) -> None:
+        """Kills all tracked subprocesses and awaits them."""
+        if not self._running_processes:
+            return
+
+        logger.info(f"Cleaning up {len(self._running_processes)} running subprocesses...")
+        # Use shield to prevent the cleanup itself from being cancelled
+        await asyncio.shield(self._do_cleanup())
+
+    async def _do_cleanup(self) -> None:
+        for process in list(self._running_processes):
+            try:
+                process.kill()
+            except OSError:
+                pass # Already dead
+        
+        # Await all to prevent zombies
+        if self._running_processes:
+            await asyncio.gather(
+                *(p.wait() for p in self._running_processes), 
+                return_exceptions=True
+            )
+        self._running_processes.clear()
 
     def log_error(self, error: Exception, next_action: str) -> None:
         classification = classify_error(error)
@@ -347,6 +372,18 @@ class CycleExecutor:
             provider_config.name, **provider_config.model_dump(exclude={"name"}),
         )
 
+        # Hook to allow CycleExecutor to track processes from adapters if supported
+        def _add_proc(p: asyncio.subprocess.Process | None) -> None:
+            if p:
+                self._running_processes.add(p)
+        def _remove_proc(p: asyncio.subprocess.Process | None) -> None:
+            if p:
+                self._running_processes.discard(p)
+
+        if hasattr(adapter, "set_process_callback"):
+            adapter.set_process_callback(_add_proc)
+            adapter.set_process_done_callback(_remove_proc)
+
         full_output: list[str] = []
         try:
             async for chunk in adapter.execute(resolved_prompt):
@@ -367,6 +404,9 @@ class CycleExecutor:
         except Exception as e:
             classification = classify_error(e)
             await self.handle_error_async(e, None)
+            from bmad_orch.types import ErrorSeverity
+            if classification.severity == ErrorSeverity.IMPACTFUL:
+                raise
             return False, str(e), classification.is_recoverable
 
     async def _record_failure(

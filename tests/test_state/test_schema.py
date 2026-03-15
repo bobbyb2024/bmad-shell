@@ -33,15 +33,17 @@ def test_cycle_record_frozen():
     with pytest.raises(ValidationError):
         cycle.cycle_id = "c2"
 
-def test_run_state_frozen():
+def test_run_state_not_frozen():
     state = RunState(
         run_id="r1",
         schema_version=1,
         run_history=[],
         config_hash="abc"
     )
-    with pytest.raises(ValidationError):
-        state.run_id = "r2"
+    # Should NOT raise ValidationError because frozen=False now
+    state.config_hash = "def"
+    assert state.config_hash == "def"
+
 
 def test_update_patterns():
     state = RunState(run_id="r1", config_hash="h1")

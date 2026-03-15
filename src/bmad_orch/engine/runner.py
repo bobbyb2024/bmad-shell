@@ -11,16 +11,17 @@ from bmad_orch.engine.cycle import CycleExecutor
 from bmad_orch.engine.emitter import EventEmitter
 from bmad_orch.engine.events import RunCompleted
 from bmad_orch.engine.prompt_resolver import PromptResolver
+from bmad_orch.exceptions import GitError, classify_error
 from bmad_orch.git import GitClient
 from bmad_orch.state.manager import StateManager
-from bmad_orch.state.schema import RunState
-from bmad_orch.types import StepOutcome
+from bmad_orch.state.schema import RunState, RunStatus
+from bmad_orch.types import ErrorSeverity, StepOutcome
 
 logger = logging.getLogger(__name__)
 
 class Runner:
     """The core engine that executes the orchestration plan."""
-    
+
     def __init__(
         self,
         config: OrchestratorConfig,
@@ -36,6 +37,13 @@ class Runner:
         self.state_manager = StateManager()
         self.prompt_resolver = PromptResolver()
         self.git_client: GitClient | None = None
+        self._executor: CycleExecutor | None = None
+        self._in_emergency_flow = False
+
+    @property
+    def in_emergency_flow(self) -> bool:
+        """Whether the runner is currently executing the emergency halt sequence."""
+        return self._in_emergency_flow
 
     async def _init_git(self) -> None:
         """Initialize GitClient if enabled and validate environment."""
@@ -62,6 +70,21 @@ class Runner:
         
         If dry_run is true, performs a full walk of the execution plan without calling providers.
         """
+        try:
+            await self._run_internal(dry_run, template_context)
+        except asyncio.CancelledError:
+            logger.info("Execution cancelled by user.")
+            await self._handle_impactful_error(None, is_abort=True)
+            raise
+        except Exception as e:
+            classification = classify_error(e)
+            if classification.severity == ErrorSeverity.IMPACTFUL:
+                logger.error(f"Impactful error detected: {e}")
+                await self._handle_impactful_error(e)
+            raise
+
+    async def _run_internal(self, dry_run: bool = False, template_context: Mapping[str, str] | None = None) -> None:
+        """Internal run logic."""
         start_time = time.time()
         template_context = template_context or {}
         
@@ -98,6 +121,8 @@ class Runner:
         else:
             self.state = RunState(run_id=str(uuid.uuid4()), template_context=dict(template_context))
 
+        self.state.update_status(RunStatus.RUNNING)
+
         executor = CycleExecutor(
             self.emitter,
             self.state_manager,
@@ -107,6 +132,7 @@ class Runner:
             adapter_factory=self.adapter_factory,
             git_client=self.git_client,
         )
+        self._executor = executor
 
         cycle_keys = list(self.config.cycles.keys())
         run_success = True
@@ -143,6 +169,19 @@ class Runner:
                 await asyncio.sleep(self.config.pauses.between_cycle_types)
                 
         # AC6: Emit RunCompleted
+        self._emit_run_completed(start_time, run_success)
+
+        # AC5: Handle git push at end
+        if self.git_client and self.config.git.push_at == "end":
+            try:
+                await self.git_client.push(
+                    remote=self.config.git.remote,
+                    branch=self.config.git.branch
+                )
+            except Exception as e:
+                logger.warning(f"Git push failed at end: {e}")
+
+    def _emit_run_completed(self, start_time: float, run_success: bool) -> None:
         elapsed = time.time() - start_time
         total_steps = sum(len(c.steps) for c in self.state.run_history) if self.state else 0
         total_cycles = len(self.state.run_history) if self.state else 0
@@ -162,12 +201,62 @@ class Runner:
             error_count=error_count
         ))
 
-        # AC5: Handle git push at end
-        if self.git_client and self.config.git.push_at == "end":
+    async def _handle_impactful_error(self, error: Exception | None, is_abort: bool = False) -> None:
+        """Handles emergency halt sequence when an impactful error or abort occurs."""
+        if self._in_emergency_flow:
+            return
+        
+        self._in_emergency_flow = True
+        try:
+            # Shield ensures that once the emergency flow starts, it won't be cancelled
+            # by a second SIGINT or task cancellation.
+            await asyncio.shield(self._emergency_halt(error, is_abort))
+        finally:
+            self._in_emergency_flow = False
+
+    async def _emergency_halt(self, error: Exception | None, is_abort: bool = False) -> None:
+        """Internal emergency halt logic protected by shield."""
+        failure_point = "cycle:1/step:initialization"
+        if self.state and self.state.run_history:
+            last_cycle = self.state.run_history[-1]
+            if last_cycle.steps:
+                last_step = last_cycle.steps[-1]
+                failure_point = f"cycle:{last_cycle.cycle_id}/step:{last_step.step_id}"
+            else:
+                failure_point = f"cycle:{last_cycle.cycle_id}/step:start"
+
+        error_type = "UserAbort" if is_abort else (type(error).__name__ if error else "UnknownError")
+        failure_reason = str(error) if error else ("Execution Halted by User" if is_abort else "Unknown failure")
+
+        # 1. Record halt in state and save atomically
+        if self.state and self.state_path:
             try:
+                self.state = self.state_manager.record_halt(
+                    state=self.state,
+                    failure_point=failure_point,
+                    failure_reason=failure_reason,
+                    error_type=error_type,
+                    path=self.state_path,
+                    is_abort=is_abort
+                )
+            except Exception as e:
+                logger.error(f"Failed to record halt in state: {e}")
+
+        # 2. Kill subprocesses
+        if self._executor:
+             await self._executor.cleanup_processes()
+
+        # 3. Git emergency commit + push
+        if self.git_client and self.config.git.enabled and not isinstance(error, GitError):
+            try:
+                # Sequential git ops, skip remaining if one fails
+                await self.git_client.add(["."])
+                await self.git_client.commit(
+                    message=f"chore(bmad-orch): emergency commit — {failure_point} — {error_type}"
+                )
                 await self.git_client.push(
                     remote=self.config.git.remote,
                     branch=self.config.git.branch
                 )
             except Exception as e:
-                logger.warning(f"Git push failed at end: {e}")
+                logger.error(f"Emergency git operation failed: {e}", exc_info=True)

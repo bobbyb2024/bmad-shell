@@ -8,7 +8,7 @@ from pathlib import Path
 from pydantic import ValidationError
 
 from bmad_orch.exceptions import StateError
-from bmad_orch.state.schema import CycleRecord, RunState, StepRecord
+from bmad_orch.state.schema import CycleRecord, RunState, RunStatus, StepRecord
 from bmad_orch.types import StepOutcome
 
 logger = logging.getLogger(__name__)
@@ -100,6 +100,34 @@ class StateManager:
                 except Exception:
                     logger.debug(f"Failed to clean up temp file {temp_path}")
             raise StateError(f"Failed to save state to {path}: {e}") from e
+
+    @staticmethod
+    def record_halt(
+        state: RunState,
+        failure_point: str,
+        failure_reason: str,
+        error_type: str,
+        path: Path,
+        is_abort: bool = False,
+    ) -> RunState:
+        """Records a halt/failure in the state and saves it atomically."""
+        new_status = RunStatus.HALTED if is_abort else RunStatus.FAILED
+        
+        # Use model_copy to get a new instance with updated failure fields
+        updated_state = state.model_copy(update={
+            "halted_at": datetime.now(UTC),
+            "failure_point": failure_point,
+            "failure_reason": failure_reason,
+            "error_type": error_type,
+        })
+        
+        # Perform status transition validation
+        updated_state.update_status(new_status)
+        
+        # Save atomically
+        StateManager.save(updated_state, path)
+        
+        return updated_state
 
     @staticmethod
     def record_step(state: RunState, cycle_id: str, step_record: StepRecord) -> RunState:

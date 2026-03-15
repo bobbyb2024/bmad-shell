@@ -13,6 +13,17 @@ class ProviderAdapter(ABC):
 
     install_hint: str = "Install the CLI for this provider."
 
+    def __init__(self, **config: Any) -> None:
+        self.config = config
+        self._process_callback = None
+        self._process_done_callback = None
+
+    def set_process_callback(self, callback: Any) -> None:
+        self._process_callback = callback
+
+    def set_process_done_callback(self, callback: Any) -> None:
+        self._process_done_callback = callback
+
     @abstractmethod
     def detect(self, cli_path: str | None = None) -> bool:
         """Detect if the provider CLI binary is available on the system.

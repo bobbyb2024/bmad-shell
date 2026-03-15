@@ -1,6 +1,7 @@
 import asyncio
 import hashlib
 import pathlib
+import signal
 import subprocess
 import sys
 import time
@@ -20,7 +21,18 @@ from bmad_orch.config import (
     validate_provider_availability,
 )
 from bmad_orch.engine.runner import Runner
-from bmad_orch.exceptions import BmadOrchError, ConfigProviderError, StateError
+from bmad_orch.exceptions import (
+    BmadOrchError,
+    ConfigError,
+    ConfigProviderError,
+    GitError,
+    ProviderCrashError,
+    ProviderError,
+    ProviderTimeoutError,
+    ResourceError,
+    StateError,
+    TemplateVariableError,
+)
 from bmad_orch.providers import get_adapter, get_registry
 from bmad_orch.rendering.summary import render_playbook_summary
 from bmad_orch.state import RunState, StateManager
@@ -146,6 +158,35 @@ def open_editor(path: pathlib.Path) -> bool:
         get_error_console().print(f"[red]Error invoking editor: {e}[/red]")
         return False
 
+async def _run_with_signals(runner: Runner) -> int:
+    """Helper to run the orchestrator with SIGINT/SIGTERM handling."""
+    loop = asyncio.get_running_loop()
+    main_task = asyncio.create_task(runner.run())
+    
+    # Track which exit code to use if cancelled
+    exit_code_container = {"code": 0}
+
+    def signal_handler(sig_name: str, sig_code: int) -> None:
+        if runner.in_emergency_flow:
+            get_error_console().print(f"\n[yellow]■ Emergency save in progress ({sig_name}), please wait...[/yellow]")
+            return
+        get_error_console().print(f"\n[yellow]■ Interrupt received ({sig_name}), halting gracefully...[/yellow]")
+        exit_code_container["code"] = sig_code
+        main_task.cancel()
+
+    for sig, code in [(signal.SIGINT, 130), (signal.SIGTERM, 143)]:
+        try:
+            loop.add_signal_handler(sig, signal_handler, sig.name, code)
+        except (NotImplementedError, ValueError):
+            # Fallback for environments where add_signal_handler is not supported (e.g. Windows, some CI)
+            pass
+
+    try:
+        await main_task
+        return 0
+    except asyncio.CancelledError:
+        return exit_code_container["code"]
+
 @app.command()
 def start(
     config: Annotated[str | None, typer.Option("--config", "-c", help="Path to bmad-orch.yaml")] = None,
@@ -158,9 +199,6 @@ def start(
     try:
         cfg, source_path = get_config(config)
         validate_provider_availability(cfg, registry=get_registry())
-    except ConfigProviderError as e:
-        error_console.print(f"[red]{e}[/red]")
-        raise typer.Exit(code=2) from e
     except BmadOrchError as e:
         error_console.print(f"[red]{e}[/red]")
         raise typer.Exit(code=2) from e
@@ -168,10 +206,8 @@ def start(
     config_hash = get_config_hash(source_path)
     state_path = source_path.parent / "bmad-orch-state.json"
     
-    # AC8: Use StateManager.load for state discovery, loading, and validation
     try:
         state = StateManager.load(state_path, expected_hash=config_hash)
-        # config_changed = state.config_hash != config_hash  # StateManager.load already warns
         first_run = not state_path.exists() or not state.run_history
         config_changed = state.config_hash != config_hash
     except StateError as e:
@@ -180,22 +216,15 @@ def start(
         first_run = True
         config_changed = False
 
-    # Pre-flight logic
     if dry_run:
         render_playbook_summary(cfg, dry_run=True)
         raise typer.Exit(code=0)
     
     if not no_preflight:
         render_playbook_summary(cfg, dry_run=False)
-        
-        action = "proceed"
-        if first_run or config_changed:
+        action = handle_confirmation(source_path) if (first_run or config_changed) else handle_auto_dismiss()
+        if action == "pause":
             action = handle_confirmation(source_path)
-        else:
-            action = handle_auto_dismiss()
-            if action == "pause":
-                action = handle_confirmation(source_path)
-        
         while action == "modify":
             if open_editor(source_path):
                 try:
@@ -205,32 +234,44 @@ def start(
                     render_playbook_summary(cfg, dry_run=False)
                     action = handle_confirmation(source_path)
                 except Exception as e:
-                    get_error_console().print(f"[red]Invalid config: {e}[/red]")
-                    get_console().print("\n[bold cyan]Options:[/bold cyan] [e]dit again, [q]uit")
-                    while True:
-                        c = typer.getchar().lower()
-                        if c == "e":
-                            action = "modify"
-                            break
-                        elif c == "q":
-                            action = "quit"
-                            break
+                    error_console.print(f"[red]Invalid config: {e}[/red]")
+                    if typer.confirm("Edit again?", default=True):
+                        action = "modify"
+                    else:
+                        action = "quit"
             else:
                 action = handle_confirmation(source_path)
-
         if action == "quit":
             raise typer.Exit(code=130)
 
-    # Save state with config hash (atomic write via StateManager)
-    state = RunState(run_id=str(uuid.uuid4()), config_hash=config_hash)
-    try:
-        StateManager.save(state, state_path)
-    except StateError as e:
-        error_console.print(f"[red]Warning: Could not save state file: {e}[/red]")
-
     # Initialize and run
     runner = Runner(config=cfg, state_path=state_path, adapter_factory=get_adapter)
-    asyncio.run(runner.run(dry_run=False))
+    
+    exit_code: int = 0
+    try:
+        # Cast to int to satisfy Pyright Literal[0] inference
+        res = asyncio.run(_run_with_signals(runner))
+        exit_code = int(res)
+    except Exception as e:
+        headline = f"✗ [{str(e)}] — run bmad-orch resume"
+        error_console.print(f"\n[bold red]{headline}[/bold red]")
+        
+        if exit_code == 0:
+            if isinstance(e, (ConfigError, ConfigProviderError, TemplateVariableError)):
+                exit_code = 2
+            elif isinstance(e, (GitError, ResourceError, StateError)):
+                exit_code = 3
+            elif isinstance(e, (ProviderCrashError, ProviderTimeoutError, ProviderError)):
+                exit_code = 4
+            else:
+                exit_code = 1
+            
+        raise typer.Exit(code=exit_code) from e
+
+    if exit_code != 0:
+        if exit_code in (130, 143):
+            error_console.print("\n[bold yellow]■ [Execution Halted by User] — run bmad-orch resume[/bold yellow]")
+        raise typer.Exit(code=exit_code)
 
 @app.command()
 def resume(

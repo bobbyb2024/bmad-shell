@@ -833,3 +833,218 @@ The codebase changes have been tested successfully, and the story status has bee
 [2026-03-15 00:01:06] ────────────────────────────────────────────────────────────
 [2026-03-15 00:01:06]   PID:  146404  kill: ./kill-step.sh or kill 146404
 [2026-03-15 00:01:06]   Waiting for completion (watching terminal window)...
+>>> [Session started: claude-opus-4-6[1m]]
+
+>>> [Tool: Read]
+    /home/bobby/bmad-shell/_bmad/bmm/workflows/4-implementation/code-review/workflow.md
+
+>>> [Tool: Read]
+    /home/bobby/bmad-shell/_bmad-output/implementation-artifacts/4-1-git-integration-configurable-commits.md
+Let me execute the code review workflow. First, I'll gather git status and load the required files.
+
+>>> [Tool: Bash]
+    $ git status --porcelain
+
+>>> [Tool: Bash]
+    $ git diff --name-only && echo "---STAGED---" && git diff --cached --name-only
+
+>>> [Tool: Read]
+    /home/bobby/bmad-shell/_bmad/bmm/workflows/4-implementation/code-review/discover-inputs.md
+
+>>> [Tool: Read]
+    /home/bobby/bmad-shell/_bmad/bmm/config.yaml
+Now let me read all the implementation files. Since I'll need to edit them, I need them in context.
+
+>>> [Tool: Read]
+    /home/bobby/bmad-shell/src/bmad_orch/git.py
+
+>>> [Tool: Read]
+    /home/bobby/bmad-shell/src/bmad_orch/config/schema.py
+
+>>> [Tool: Read]
+    /home/bobby/bmad-shell/src/bmad_orch/engine/runner.py
+
+>>> [Tool: Read]
+    /home/bobby/bmad-shell/src/bmad_orch/engine/cycle.py
+
+>>> [Tool: Read]
+    /home/bobby/bmad-shell/src/bmad_orch/types/__init__.py
+
+>>> [Tool: Read]
+    /home/bobby/bmad-shell/tests/test_git.py
+
+
+Now let me read the remaining files I need for context — the test files and the exceptions module.
+
+>>> [Tool: Read]
+    /home/bobby/bmad-shell/tests/test_runner_atdd.py
+
+>>> [Tool: Read]
+    /home/bobby/bmad-shell/tests/test_config/test_schema.py
+
+>>> [Tool: Read]
+    /home/bobby/bmad-shell/src/bmad_orch/exceptions.py
+Let me check if the `Timing` enum is used anywhere before I finalize findings.
+
+>>> [Tool: Grep]
+    Timing
+Good — `Timing` is dead code, only defined but never used. Now I have my complete review. Let me present findings and apply all fixes.
+
+---
+
+## **CODE REVIEW FINDINGS, Bobby!**
+
+**Story:** 4-1-git-integration-configurable-commits.md
+**Git vs Story Discrepancies:** 1 found
+**Issues Found:** 1 High, 2 Medium, 1 Low
+
+### CRITICAL ISSUES
+None.
+
+### HIGH ISSUES
+
+1. **Broken test assertion — `test_git_push_timeout_uses_60s`** (`tests/test_git.py:206`)
+   The assertion `assert push_wait_call[1].get("timeout") or push_wait_call[0][1] == 60.0` uses Python's `or` incorrectly. If `get("timeout")` returns *any* truthy number (e.g., 30.0), the whole assert passes. This test would pass even if push used a 5-second timeout.
+
+### MEDIUM ISSUES
+
+1. **Missing test for `commit_at: never` / `push_at: never`** — Task 5 subtask marked `[x]` ("Test commit_at: never and push_at: never skip operations") but no such test exists in `test_git.py` or `test_runner_atdd.py`.
+2. **Dead code: `Timing` enum in `types/__init__.py:21-26`** — Added by this story but never imported or used anywhere. `GitConfig` uses `Literal[...]` instead.
+
+### LOW ISSUES
+
+1. **Story File List includes `exceptions.py` but git shows no changes** — Misleading; the file was a pre-existing dependency, not modified.
+2. **Hardcoded paths `_bmad-output` / `logs`** in `runner.py:51` and `cycle.py:94` — works for this project but not truly "dynamic" per AC10 spirit. No `output_dir` config field exists to fix this against.
+
+---
+
+Applying all HIGH and MEDIUM fixes now.
+
+**Fix 1: Broken timeout test assertion**
+
+>>> [Tool: Edit]
+    /home/bobby/bmad-shell/tests/test_git.py
+**Fix 2: Add missing test for `commit_at: never` and `push_at: never` (AC15)**
+
+>>> [Tool: Edit]
+    /home/bobby/bmad-shell/tests/test_git.py
+
+>>> [Tool: Read]
+    /home/bobby/bmad-shell/tests/test_git.py
+Now append the missing AC15 test at the end of the file:
+
+>>> [Tool: Edit]
+    /home/bobby/bmad-shell/tests/test_git.py
+**Fix 3: Remove dead `Timing` enum from `types/__init__.py`**
+
+>>> [Tool: Edit]
+    /home/bobby/bmad-shell/src/bmad_orch/types/__init__.py
+Now clean up the unused `StrEnum` import if it's no longer needed:
+
+>>> [Tool: Grep]
+    StrEnum
+
+>>> [Tool: Edit]
+    /home/bobby/bmad-shell/src/bmad_orch/types/__init__.py
+Now let me run the tests to verify all fixes work:
+
+>>> [Tool: Bash]
+    $ python -m pytest tests/test_git.py tests/test_config/test_schema.py tests/test_runner_atdd.py -v 2>&1 | tail -50
+
+>>> [Tool: Bash]
+    $ which python3 && python3 -m pytest tests/test_git.py tests/test_config/test_schema.py tests/test_runner_atdd.py -v 2>&1 
+
+>>> [Tool: Bash]
+    $ ls .venv/bin/python 2>/dev/null && .venv/bin/python -m pytest tests/test_git.py tests/test_config/test_schema.py tests/t
+The `timeout` is passed as a keyword arg, so there's no `[0][1]`. Let me fix:
+
+>>> [Tool: Edit]
+    /home/bobby/bmad-shell/tests/test_git.py
+
+>>> [Tool: Bash]
+    $ .venv/bin/python -m pytest tests/test_git.py tests/test_config/test_schema.py tests/test_runner_atdd.py -v 2>&1 | tail -
+**43 passed, 0 failed.** All fixes verified. Now let me update the story file with the review results.
+
+>>> [Tool: Edit]
+    /home/bobby/bmad-shell/_bmad-output/implementation-artifacts/4-1-git-integration-configurable-commits.md
+Now update the sprint status:
+
+>>> [Tool: Read]
+    /home/bobby/bmad-shell/_bmad-output/implementation-artifacts/sprint-status.yaml
+Story 4-1 is already "done" in sprint status — no change needed there since all HIGH/MEDIUM issues were fixed. Let me just update the `last_updated` date:
+
+>>> [Tool: Edit]
+    /home/bobby/bmad-shell/_bmad-output/implementation-artifacts/sprint-status.yaml
+
+>>> [Tool: Edit]
+    /home/bobby/bmad-shell/_bmad-output/implementation-artifacts/sprint-status.yaml
+---
+
+## **Review Complete!**
+
+**Story Status:** done
+**Issues Fixed:** 3 (1 High, 2 Medium)
+**Action Items Created:** 0
+
+### Summary of fixes applied:
+
+| # | Severity | File | Fix |
+|---|----------|------|-----|
+| 1 | **HIGH** | `tests/test_git.py:205-208` | Fixed broken timeout assertion — was using `or` operator that passed for any non-zero timeout, now correctly asserts `== 60.0` |
+| 2 | **MEDIUM** | `tests/test_git.py:211-272` | Added 2 missing AC15 tests: `test_commit_at_never_skips_commit` and `test_push_at_never_skips_push` |
+| 3 | **MEDIUM** | `src/bmad_orch/types/__init__.py:21-26` | Removed dead `Timing` enum (and unused `StrEnum` import) — never referenced anywhere |
+
+### Remaining LOW issues (no fix needed):
+- `exceptions.py` listed in story File List but has no git changes (misleading documentation)
+- Hardcoded `_bmad-output`/`logs` paths in runner.py and cycle.py (no `output_dir` config field exists to reference — design gap for a future story)
+
+---
+
+## **Review Complete!**
+
+**Story Status:** done
+**Issues Fixed:** 3 (1 High, 2 Medium)
+**Action Items Created:** 0
+
+### Summary of fixes applied:
+
+| # | Severity | File | Fix |
+|---|----------|------|-----|
+| 1 | **HIGH** | `tests/test_git.py:205-208` | Fixed broken timeout assertion — was using `or` operator that passed for any non-zero timeout, now correctly asserts `== 60.0` |
+| 2 | **MEDIUM** | `tests/test_git.py:211-272` | Added 2 missing AC15 tests: `test_commit_at_never_skips_commit` and `test_push_at_never_skips_push` |
+| 3 | **MEDIUM** | `src/bmad_orch/types/__init__.py:21-26` | Removed dead `Timing` enum (and unused `StrEnum` import) — never referenced anywhere |
+
+### Remaining LOW issues (no fix needed):
+- `exceptions.py` listed in story File List but has no git changes (misleading documentation)
+- Hardcoded `_bmad-output`/`logs` paths in runner.py and cycle.py (no `output_dir` config field exists to reference — design gap for a future story)
+
+>>> [Claude finished: $1.4237, 288.8s, 33 turns]
+[2026-03-15 00:06:01] 
+[2026-03-15 00:06:01]   DONE: [10/11] Claude: Code review (pass 3) (295s, exit 0)
+[2026-03-15 00:06:01] 
+[2026-03-15 00:06:01] 
+[2026-03-15 00:06:01] ────────────────────────────────────────────────────────────
+[2026-03-15 00:06:01]   STEP: [11/11] Gemini: Code review (pass 4)
+[2026-03-15 00:06:01]   CMD:  gemini --model=gemini-3.1-pro-preview -y -p '/bmad-code-review Review code for story: _bmad-output/implementation-artifacts/4-1-git-integration-configurable-commits.md — after the review, automatically apply all fixes to the code. Do not ask for confirmation, just make the edits.'
+[2026-03-15 00:06:01]   START: 2026-03-15 00:06:01
+[2026-03-15 00:06:01] ────────────────────────────────────────────────────────────
+[2026-03-15 00:06:01]   PID:  147420  kill: ./kill-step.sh or kill 147420
+[2026-03-15 00:06:01]   Waiting for completion (watching terminal window)...
+[31mError in /home/bobby/bmad-shell/.gemini/settings.json: Unexpected end of JSON input
+Please fix the configuration file(s) and try again.[0m
+[2026-03-15 00:06:46] 
+[2026-03-15 00:06:46] ╔══════════════════════════════════════════════════════════╗
+[2026-03-15 00:06:46]   ERROR — HUMAN INTERVENTION REQUIRED
+[2026-03-15 00:06:46] ╠══════════════════════════════════════════════════════════╣
+[2026-03-15 00:06:46]   Step:      [11/11] Gemini: Code review (pass 4)
+[2026-03-15 00:06:46]   Command:   gemini --model=gemini-3.1-pro-preview -y -p '/bmad-code-review Review code for story: _bmad-output/implementation-artifacts/4-1-git-integration-configurable-commits.md — after the review, automatically apply all fixes to the code. Do not ask for confirmation, just make the edits.'
+[2026-03-15 00:06:46]   Exit code: 52
+[2026-03-15 00:06:46]   Elapsed:   45s
+[2026-03-15 00:06:46]   Time:      2026-03-15 00:06:46
+[2026-03-15 00:06:46]   Log file:  _bmad-output/implementation-artifacts/4-1-git-integration-configurable-commits-cycle.log
+[2026-03-15 00:06:46]   Cause:     Non-zero exit from CLI
+[2026-03-15 00:06:46] ╠══════════════════════════════════════════════════════════╣
+[2026-03-15 00:06:46]   Review the log file above, fix the issue, then re-run:
+[2026-03-15 00:06:46]     ./run-story-cycle.sh
+[2026-03-15 00:06:46] ╚══════════════════════════════════════════════════════════╝
+[2026-03-15 00:06:46] 

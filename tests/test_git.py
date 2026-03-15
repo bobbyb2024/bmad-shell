@@ -4,6 +4,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+from bmad_orch.config.schema import validate_config
 from bmad_orch.exceptions import GitError
 from bmad_orch.git import GitClient, GitStatus
 
@@ -203,4 +204,69 @@ async def test_git_push_timeout_uses_60s():
             await client.push()
             # The push call's wait_for should use timeout=60.0
             push_wait_call = mock_wait.call_args
-            assert push_wait_call[1].get("timeout") or push_wait_call[0][1] == 60.0
+            assert push_wait_call[1]["timeout"] == 60.0, (
+                f"Expected push timeout 60.0, got {push_wait_call[1].get('timeout')}"
+            )
+
+
+@pytest.mark.asyncio
+async def test_commit_at_never_skips_commit():
+    """AC15: commit_at='never' skips all commit operations."""
+    from bmad_orch.engine.cycle import CycleExecutor
+
+    cfg_data = {
+        "providers": {1: {"name": "mock", "cli": "mock", "model": "m1"}},
+        "cycles": {"c1": {"steps": [{"skill": "s1", "provider": 1, "type": "validation", "prompt": "p"}]}},
+        "git": {"enabled": True, "commit_at": "never", "push_at": "never"},
+        "pauses": {"between_steps": 0, "between_cycles": 0, "between_cycle_types": 0, "between_workflows": 0},
+        "error_handling": {"retry_transient": True, "max_retries": 3, "retry_delay": 10},
+    }
+    config = validate_config(cfg_data)
+
+    mock_git = AsyncMock(spec=GitClient)
+    executor = CycleExecutor(
+        emitter=MagicMock(),
+        state_manager=MagicMock(),
+        prompt_resolver=MagicMock(),
+        config=config,
+        state_path=Path("/dev/null"),
+        git_client=mock_git,
+    )
+
+    # commit_at="never" should not match "step" or "cycle"
+    await executor._handle_git_commit("step", "test_step", True)
+    await executor._handle_git_commit("cycle", "test_cycle", True)
+
+    mock_git.add.assert_not_called()
+    mock_git.commit.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_push_at_never_skips_push():
+    """AC15: push_at='never' skips all push operations."""
+    from bmad_orch.engine.cycle import CycleExecutor
+
+    cfg_data = {
+        "providers": {1: {"name": "mock", "cli": "mock", "model": "m1"}},
+        "cycles": {"c1": {"steps": [{"skill": "s1", "provider": 1, "type": "validation", "prompt": "p"}]}},
+        "git": {"enabled": True, "commit_at": "cycle", "push_at": "never"},
+        "pauses": {"between_steps": 0, "between_cycles": 0, "between_cycle_types": 0, "between_workflows": 0},
+        "error_handling": {"retry_transient": True, "max_retries": 3, "retry_delay": 10},
+    }
+    config = validate_config(cfg_data)
+
+    mock_git = AsyncMock(spec=GitClient)
+    executor = CycleExecutor(
+        emitter=MagicMock(),
+        state_manager=MagicMock(),
+        prompt_resolver=MagicMock(),
+        config=config,
+        state_path=Path("/dev/null"),
+        git_client=mock_git,
+    )
+
+    # push_at="never" should not match "cycle" or "end"
+    await executor._handle_git_push("cycle")
+    await executor._handle_git_push("end")
+
+    mock_git.push.assert_not_called()

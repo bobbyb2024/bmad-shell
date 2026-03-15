@@ -178,6 +178,7 @@ Gemini 2.0 Flash
 ## Change Log
 - 2026-03-14: Initial implementation of Git Integration & Configurable Commits.
 - 2026-03-14: Code review fixes applied — path validation hardened (AC10), log file staging added, test coverage expanded (6 new tests), RuntimeWarning fixed.
+- 2026-03-15: Code review #2 fixes — fixed broken timeout assertion in test_git_push_timeout_uses_60s (would pass for any non-zero timeout), added missing AC15 tests for commit_at/push_at never, removed dead Timing enum from types/__init__.py.
 
 ## Status
 done

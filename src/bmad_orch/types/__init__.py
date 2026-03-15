@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from enum import Enum, StrEnum
+from enum import Enum
 from typing import Any, NewType
 
 ProviderName = NewType("ProviderName", str)
@@ -16,13 +16,6 @@ class ErrorSeverity(Enum):
 class StepType(Enum):
     GENERATIVE = "generative"
     VALIDATION = "validation"
-
-
-class Timing(StrEnum):
-    STEP = "step"
-    CYCLE = "cycle"
-    END = "end"
-    NEVER = "never"
 
 
 class EscalationState(Enum):
