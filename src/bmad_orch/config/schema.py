@@ -58,6 +58,7 @@ class PauseConfig(BaseModel):
 
     between_steps: float = Field(ge=0)
     between_cycles: float = Field(ge=0)
+    between_cycle_types: float = Field(default=0.0, ge=0)
     between_workflows: float = Field(ge=0)
 
 

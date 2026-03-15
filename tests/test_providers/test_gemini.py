@@ -1,13 +1,14 @@
 import asyncio
 import os
-from unittest.mock import patch, MagicMock
-import pytest
-import shutil
 import subprocess
+from unittest.mock import patch
+
+import pytest
 
 from bmad_orch.exceptions import ProviderCrashError, ProviderError, ProviderTimeoutError, ProviderTransientError
 from bmad_orch.providers.gemini import GeminiAdapter
 from bmad_orch.types import OutputChunk
+
 
 @pytest.fixture(autouse=True)
 def _reset_gemini_class_state():

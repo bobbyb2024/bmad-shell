@@ -1,26 +1,26 @@
 import asyncio
 import logging
-from datetime import datetime, timezone
+from collections.abc import Callable, Mapping
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Mapping
+from typing import Any
 
 from structlog.contextvars import bind_contextvars, unbind_contextvars
 
 from bmad_orch.config.schema import CycleConfig, OrchestratorConfig, StepConfig
-from bmad_orch.config.template import TemplateResolver
 from bmad_orch.engine.emitter import EventEmitter
 from bmad_orch.engine.events import (
     CycleCompleted,
     CycleStarted,
+    ErrorOccurred,
     EscalationChanged,
     EscalationLevel,
-    ErrorOccurred,
     ProviderOutput,
     StepCompleted,
     StepStarted,
 )
-from bmad_orch.exceptions import ConfigError
-from bmad_orch.providers import get_adapter
+from bmad_orch.engine.prompt_resolver import PromptResolver
+from bmad_orch.exceptions import classify_error
 from bmad_orch.state.manager import StateManager
 from bmad_orch.state.schema import ErrorRecord, RunState, StepRecord
 from bmad_orch.types import StepOutcome, StepType
@@ -32,15 +32,46 @@ class CycleExecutor:
         self,
         emitter: EventEmitter,
         state_manager: StateManager,
-        template_resolver: TemplateResolver,
+        prompt_resolver: PromptResolver,
         config: OrchestratorConfig,
         state_path: Path,
+        adapter_factory: Callable[..., Any] | None = None,
     ) -> None:
         self.emitter = emitter
         self.state_manager = state_manager
-        self.template_resolver = template_resolver
+        self.prompt_resolver = prompt_resolver
         self.config = config
         self.state_path = state_path
+        self.adapter_factory = adapter_factory
+
+    def log_error(self, error: Exception, next_action: str) -> None:
+        classification = classify_error(error)
+        log_msg = f"✗ [{str(error)}] — [{next_action}]"
+        if classification.is_recoverable:
+            logger.warning(log_msg, extra={"error_classification": classification.severity.name})
+        else:
+            logger.error(log_msg, extra={"error_classification": classification.severity.name})
+
+    async def handle_error_async(self, error: Exception, process: 'asyncio.subprocess.Process | None' = None) -> None:
+        classification = classify_error(error)
+        if process:
+            try:
+                process.kill()
+            except OSError:
+                pass
+            await process.wait()
+
+        if not classification.is_recoverable:
+            self.log_error(error, "Check provider configuration and logs")
+            self.emitter.emit(ErrorOccurred(
+                error_type=error.__class__.__name__,
+                message=str(error),
+                source="CycleExecutor",
+                recoverable=False,
+                suggested_action="Check provider configuration and logs",
+            ))
+        else:
+            self.log_error(error, "Execution continues to the next retry or step")
 
     async def execute_cycle(
         self,
@@ -57,7 +88,8 @@ class CycleExecutor:
                     error_type="ConfigError",
                     message="Cycle has zero steps",
                     source=cycle_id,
-                    recoverable=False
+                    recoverable=False,
+                    suggested_action="Add at least one step to the cycle configuration",
                 ))
                 return state
 
@@ -71,7 +103,8 @@ class CycleExecutor:
                         error_type="ConfigError",
                         message=error_msg,
                         source=step_name,
-                        recoverable=False
+                        recoverable=False,
+                        suggested_action="Verify provider exists in configuration",
                     ))
                     # AC12: Halt following AC10 failure protocol
                     # Start cycle for state tracking, but do NOT emit CycleStarted
@@ -89,7 +122,8 @@ class CycleExecutor:
                     error_type="ConfigError",
                     message="Cycle has only generative steps but repeat > 1; iterations 1+ would be no-ops",
                     source=cycle_id,
-                    recoverable=False
+                    recoverable=False,
+                    suggested_action="Add a validation step or set repeat to 1",
                 ))
                 return state
 
@@ -99,7 +133,8 @@ class CycleExecutor:
                     error_type="ConfigError",
                     message=f"Invalid repeat value: {cycle_config.repeat}",
                     source=cycle_id,
-                    recoverable=False
+                    recoverable=False,
+                    suggested_action="Set repeat to a positive integer",
                 ))
                 return state
 
@@ -109,6 +144,15 @@ class CycleExecutor:
             for cycle_idx in range(cycle_config.repeat):
                 cycle_num = cycle_idx + 1
                 rep_id = f"{cycle_id}:{cycle_num}"
+
+                # AC7: Skip already successful repetition
+                already_success = any(
+                    r.cycle_id == rep_id and r.outcome == StepOutcome("success")
+                    for r in state.run_history
+                )
+                if already_success:
+                    logger.info(f"Skipping already successful cycle repetition {rep_id}")
+                    continue
 
                 state = self.state_manager.start_cycle(state, rep_id)
                 self.emitter.emit(CycleStarted(cycle_number=cycle_num, provider_name=first_provider_name))
@@ -128,28 +172,52 @@ class CycleExecutor:
 
                         # AC8: Prompt Resolution
                         try:
-                            resolved_prompt = self.template_resolver.resolve(
-                                step.prompt, template_context, step_name=step_name
+                            resolved_prompt = self.prompt_resolver.resolve(
+                                step.prompt, template_context
                             )
-                        except ConfigError as e:
+                        except Exception as e:
                             self.emitter.emit(ErrorOccurred(
                                 error_type="ConfigError",
                                 message=str(e),
                                 source=step_name,
-                                recoverable=False
+                                recoverable=False,
+                                suggested_action="Fix the prompt template configuration",
                             ))
-                            state = await self._record_failure(state, rep_id, step_name, provider_name, str(e))
-                            self.emitter.emit(CycleCompleted(cycle_number=cycle_num, provider_name=first_provider_name, success=False))
+                            state = await self._record_failure(
+                                state, rep_id, step_name, provider_name, str(e),
+                            )
+                            self.emitter.emit(CycleCompleted(
+                                cycle_number=cycle_num, provider_name=first_provider_name, success=False,
+                            ))
                             return state
 
                         # Execute Step
-                        success, output = await self._execute_step(step, resolved_prompt)
+                        success, output, recoverable = await self._execute_step(step, resolved_prompt)
+
+                        # Extract output variables
+                        if success:
+                            import re
+                            # Common generic extraction: file path heuristic
+                            paths = re.findall(r"(_bmad-output/\S+\.(?:md|yaml|yml|json|txt))", output)
+                            if paths:
+                                new_ctx = dict(state.template_context)
+                                if "story" in cycle_id.lower() or "story" in step_name.lower():
+                                    new_ctx["current_story_file"] = paths[-1]
+                                elif "atdd" in cycle_id.lower() or "atdd" in step_name.lower():
+                                    new_ctx["current_atdd_file"] = paths[-1]
+                                state = state.model_copy(update={"template_context": new_ctx})
 
                         # AC6: Escalation detection
                         if "ESCALATE: ATTENTION" in output:
-                            self.emitter.emit(EscalationChanged(step_name=step_name, previous_level=None, new_level=EscalationLevel.ATTENTION))
+                            self.emitter.emit(EscalationChanged(
+                                step_name=step_name, previous_level=None,
+                                new_level=EscalationLevel.ATTENTION,
+                            ))
                         elif "ESCALATE: ACTION" in output:
-                            self.emitter.emit(EscalationChanged(step_name=step_name, previous_level=None, new_level=EscalationLevel.ACTION))
+                            self.emitter.emit(EscalationChanged(
+                                step_name=step_name, previous_level=None,
+                                new_level=EscalationLevel.ACTION,
+                            ))
 
                         # AC7, AC10: Record & Persist
                         outcome = StepOutcome("success") if success else StepOutcome("failure")
@@ -157,23 +225,29 @@ class CycleExecutor:
                             step_id=step_name,
                             provider_name=provider_name,
                             outcome=outcome,
-                            timestamp=datetime.now(timezone.utc)
+                            timestamp=datetime.now(UTC)
                         )
                         state = self.state_manager.record_step(state, rep_id, step_record)
                         self.state_manager.save(state, self.state_path)
-                        
+
                         self.emitter.emit(StepCompleted(step_name=step_name, step_index=step_idx, success=success))
 
                         if not success:
+                            if recoverable:
+                                # AC2: Recoverable error — logged already, continue to next step
+                                continue
                             self.emitter.emit(ErrorOccurred(
                                 error_type="StepError",
                                 message=f"Step {step_name} failed: {output}",
                                 source=step_name,
                                 recoverable=False,
+                                suggested_action="Check provider configuration and logs",
                             ))
                             state = self.state_manager.finish_cycle(state, rep_id, StepOutcome("failure"))
                             self.state_manager.save(state, self.state_path)
-                            self.emitter.emit(CycleCompleted(cycle_number=cycle_num, provider_name=first_provider_name, success=False))
+                            self.emitter.emit(CycleCompleted(
+                                cycle_number=cycle_num, provider_name=first_provider_name, success=False,
+                            ))
                             return state
 
                         # AC4: Step Pauses
@@ -195,7 +269,9 @@ class CycleExecutor:
                 # AC6: CycleCompleted
                 state = self.state_manager.finish_cycle(state, rep_id, StepOutcome("success"))
                 self.state_manager.save(state, self.state_path)
-                self.emitter.emit(CycleCompleted(cycle_number=cycle_num, provider_name=first_provider_name, success=True))
+                self.emitter.emit(CycleCompleted(
+                    cycle_number=cycle_num, provider_name=first_provider_name, success=True,
+                ))
 
                 # AC5: Cycle Pauses
                 if cycle_idx < cycle_config.repeat - 1 and cycle_config.pause_between_cycles:
@@ -205,12 +281,21 @@ class CycleExecutor:
         finally:
             unbind_contextvars("cycle_id")
 
-    async def _execute_step(self, step: StepConfig, resolved_prompt: str) -> tuple[bool, str]:
-        """Execute the step using the configured provider adapter."""
+    async def _execute_step(self, step: StepConfig, resolved_prompt: str) -> tuple[bool, str, bool]:
+        """Execute the step using the configured provider adapter.
+
+        Returns (success, output, recoverable) where recoverable indicates
+        whether a failure was transient and execution can continue.
+        """
         provider_config = self.config.providers[step.provider]
-        adapter = get_adapter(provider_config.name, **provider_config.model_dump())
-        
-        full_output = []
+        if self.adapter_factory is None:
+            msg = "adapter_factory must be provided to execute steps"
+            raise RuntimeError(msg)
+        adapter = self.adapter_factory(
+            provider_config.name, **provider_config.model_dump(exclude={"name"}),
+        )
+
+        full_output: list[str] = []
         try:
             async for chunk in adapter.execute(resolved_prompt):
                 full_output.append(chunk.content)
@@ -219,24 +304,27 @@ class CycleExecutor:
                     content=chunk.content,
                     is_partial=True
                 ))
-            
+
             final_content = "".join(full_output)
             self.emitter.emit(ProviderOutput(
                 provider_name=provider_config.name,
                 content=final_content,
                 is_partial=False
             ))
-            return True, final_content
+            return True, final_content, False
         except Exception as e:
-            logger.error(f"Step execution failed: {e}")
-            return False, str(e)
+            classification = classify_error(e)
+            await self.handle_error_async(e, None)
+            return False, str(e), classification.is_recoverable
 
-    async def _record_failure(self, state: RunState, rep_id: str, step_id: str, provider_name: str, message: str) -> RunState:
+    async def _record_failure(
+        self, state: RunState, rep_id: str, step_id: str, provider_name: str, message: str,
+    ) -> RunState:
         step_record = StepRecord(
             step_id=step_id,
             provider_name=provider_name,
             outcome=StepOutcome("failure"),
-            timestamp=datetime.now(timezone.utc),
+            timestamp=datetime.now(UTC),
             error=ErrorRecord(message=message, error_type="ConfigError"),
         )
         state = self.state_manager.record_step(state, rep_id, step_record)

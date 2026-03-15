@@ -11,21 +11,18 @@ Acceptance Criteria:
   AC5: Detection Failure Handling — exception treated as unavailable + WARNING to stderr
 """
 
-import sys
 import time
-from typing import Any, AsyncIterator
-from unittest.mock import patch
+from collections.abc import AsyncIterator
+from typing import Any
 
 import pytest
-import yaml
 
 from bmad_orch.config.discovery import validate_provider_availability
 from bmad_orch.config.schema import validate_config
 from bmad_orch.exceptions import ConfigError
-from bmad_orch.providers import register_adapter, clear_registry, _instances
+from bmad_orch.providers import clear_registry, get_registry, register_adapter
 from bmad_orch.providers.base import ProviderAdapter
 from bmad_orch.types import OutputChunk
-
 
 # ---------------------------------------------------------------------------
 # Test adapter stubs
@@ -126,7 +123,7 @@ def test_ac1_missing_provider_raises_config_error():
     config = _make_config(["alpha", "beta"])
 
     with pytest.raises(ConfigError) as exc_info:
-        validate_provider_availability(config)
+        validate_provider_availability(config, registry=get_registry())
 
     msg = str(exc_info.value)
     assert "beta" in msg
@@ -144,7 +141,7 @@ def test_ac1_error_includes_update_config_guidance():
     config = _make_config(["alpha", "beta"])
 
     with pytest.raises(ConfigError) as exc_info:
-        validate_provider_availability(config)
+        validate_provider_availability(config, registry=get_registry())
 
     msg = str(exc_info.value)
     assert "Missing referenced provider" in msg
@@ -162,7 +159,7 @@ def test_ac1_error_names_missing_adapter():
     config = _make_config(["gamma"])
 
     with pytest.raises(ConfigError) as exc_info:
-        validate_provider_availability(config)
+        validate_provider_availability(config, registry=get_registry())
 
     assert "gamma" in str(exc_info.value)
 
@@ -182,7 +179,7 @@ def test_ac2_single_provider_config_passes():
     config = _make_config(["solo"])
 
     # Should not raise
-    validate_provider_availability(config)
+    validate_provider_availability(config, registry=get_registry())
 
 
 def test_ac2_single_provider_no_warnings(capsys):
@@ -194,7 +191,7 @@ def test_ac2_single_provider_no_warnings(capsys):
     register_adapter("solo", DetectedAdapter)
     config = _make_config(["solo"])
 
-    validate_provider_availability(config)
+    validate_provider_availability(config, registry=get_registry())
 
     captured = capsys.readouterr()
     assert "WARNING" not in captured.err
@@ -215,7 +212,7 @@ def test_ac4_no_providers_detected_raises_config_error():
     config = _make_config(["absent_a"])
 
     with pytest.raises(ConfigError):
-        validate_provider_availability(config)
+        validate_provider_availability(config, registry=get_registry())
 
 
 def test_ac4_error_lists_all_adapters_with_install_hints():
@@ -229,7 +226,7 @@ def test_ac4_error_lists_all_adapters_with_install_hints():
     config = _make_config(["absent_a"])
 
     with pytest.raises(ConfigError) as exc_info:
-        validate_provider_availability(config)
+        validate_provider_availability(config, registry=get_registry())
 
     msg = str(exc_info.value)
     assert "absent_a" in msg
@@ -247,7 +244,7 @@ def test_ac4_error_message_text():
     config = _make_config(["absent_a"])
 
     with pytest.raises(ConfigError) as exc_info:
-        validate_provider_availability(config)
+        validate_provider_availability(config, registry=get_registry())
 
     assert "No CLI providers detected" in str(exc_info.value)
 
@@ -268,7 +265,7 @@ def test_ac5_detect_exception_treated_as_unavailable():
     config = _make_config(["good"])
 
     # Should not raise — exploding provider is not referenced in config
-    validate_provider_availability(config)
+    validate_provider_availability(config, registry=get_registry())
 
 
 def test_ac5_warning_printed_to_stderr(capsys):
@@ -281,7 +278,7 @@ def test_ac5_warning_printed_to_stderr(capsys):
     register_adapter("exploding", ExplodingAdapter)
     config = _make_config(["good"])
 
-    validate_provider_availability(config)
+    validate_provider_availability(config, registry=get_registry())
 
     captured = capsys.readouterr()
     assert "WARNING" in captured.err
@@ -302,7 +299,7 @@ def test_ac5_continues_checking_after_failure():
 
     # If it didn't continue checking after 'exploding' failed,
     # 'good' would never be detected and AC4 error would fire.
-    validate_provider_availability(config)
+    validate_provider_availability(config, registry=get_registry())
 
 
 def test_ac5_referenced_exploding_provider_raises():
@@ -316,4 +313,4 @@ def test_ac5_referenced_exploding_provider_raises():
     config = _make_config(["exploding"])
 
     with pytest.raises(ConfigError):
-        validate_provider_availability(config)
+        validate_provider_availability(config, registry=get_registry())

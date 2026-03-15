@@ -1,8 +1,11 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
+
 import pytest
 from pydantic import ValidationError
-from bmad_orch.state.schema import RunState, CycleRecord, StepRecord, ErrorRecord
+
+from bmad_orch.state.schema import CycleRecord, ErrorRecord, RunState, StepRecord
 from bmad_orch.types import StepOutcome
+
 
 def test_error_record_frozen():
     error = ErrorRecord(message="test", error_type="ValueError", traceback=None)
@@ -14,7 +17,7 @@ def test_step_record_frozen():
         step_id="1",
         provider_name="test-provider",
         outcome=StepOutcome("success"),
-        timestamp=datetime.now(timezone.utc)
+        timestamp=datetime.now(UTC)
     )
     with pytest.raises(ValidationError):
         step.step_id = "2"
@@ -23,7 +26,7 @@ def test_cycle_record_frozen():
     cycle = CycleRecord(
         cycle_id="c1",
         steps=[],
-        started_at=datetime.now(timezone.utc),
+        started_at=datetime.now(UTC),
         finished_at=None,
         outcome=None
     )
@@ -49,7 +52,7 @@ def test_update_patterns():
     assert state.config_hash == "h1"
 
 def test_run_state_serialization():
-    now = datetime(2026, 3, 14, 12, 0, 0, tzinfo=timezone.utc)
+    now = datetime(2026, 3, 14, 12, 0, 0, tzinfo=UTC)
     step = StepRecord(
         step_id="s1",
         provider_name="p1",

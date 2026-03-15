@@ -1,14 +1,14 @@
 import os
-import json
 import time
-import uuid
-from pathlib import Path
-from datetime import datetime, timezone, timedelta
+from datetime import UTC, datetime, timedelta
+
 import pytest
-from bmad_orch.state.manager import StateManager
-from bmad_orch.state.schema import RunState, CycleRecord, StepRecord, ErrorRecord
-from bmad_orch.types import StepOutcome
+
 from bmad_orch.exceptions import StateError
+from bmad_orch.state.manager import StateManager
+from bmad_orch.state.schema import ErrorRecord, RunState, StepRecord
+from bmad_orch.types import StepOutcome
+
 
 @pytest.fixture
 def state_file(tmp_path):
@@ -69,7 +69,7 @@ def test_record_step(state_file):
     state = StateManager.start_cycle(state, "other-cycle")
     
     cycle_id = "cycle-1"
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     state = StateManager.start_cycle(state, cycle_id, started_at=now)
     
     error = ErrorRecord(message="fail", error_type="RuntimeError")
@@ -93,7 +93,7 @@ def test_record_step(state_file):
 
 def test_start_finish_cycle(state_file):
     state = RunState(run_id="r1")
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     
     state = StateManager.start_cycle(state, "c1", started_at=now)
     assert len(state.run_history) == 1
@@ -116,7 +116,7 @@ def test_record_step_missing_cycle(state_file):
         step_id="step-1",
         provider_name="p1",
         outcome=StepOutcome("success"),
-        timestamp=datetime.now(timezone.utc)
+        timestamp=datetime.now(UTC)
     )
     with pytest.raises(StateError, match="Cycle missing not found"):
         StateManager.record_step(state, "missing", step)
@@ -141,13 +141,13 @@ def test_cleanup_stale_tmp(state_file):
 
 def test_save_error_handling(state_file):
     # Make directory read-only to trigger save error
-    os.chmod(state_file.parent, 0o555)
+    state_file.parent.chmod(0o555)  # noqa: S103
     try:
         state = RunState(run_id="test")
         with pytest.raises(StateError, match="Failed to save state"):
             StateManager.save(state, state_file)
     finally:
-        os.chmod(state_file.parent, 0o755)
+        state_file.parent.chmod(0o755)  # noqa: S103
 
 
 def test_load_schema_version_mismatch(state_file):

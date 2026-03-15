@@ -1,8 +1,10 @@
-from abc import ABC, abstractmethod
-from typing import AsyncIterator, Any
-import uuid
 import time
+import uuid
+from abc import ABC, abstractmethod
+from collections.abc import AsyncIterator
 from dataclasses import replace
+from typing import Any
+
 from bmad_orch.types import OutputChunk
 
 
@@ -25,14 +27,14 @@ class ProviderAdapter(ABC):
         """List available models for this provider."""
         pass
 
-    def _get_base_metadata(self, **kwargs: Any) -> dict[str, Any]:
+    def _get_base_metadata(self, **kwargs: Any) -> dict[str, Any]:  # noqa: ANN401
         """Provide base metadata including execution_id. AC4."""
         return {
             "execution_id": kwargs.get("execution_id", str(uuid.uuid4())),
             "timestamp": time.time()
         }
 
-    async def execute(self, prompt: str, **kwargs: Any) -> AsyncIterator[OutputChunk]:
+    async def execute(self, prompt: str, **kwargs: Any) -> AsyncIterator[OutputChunk]:  # noqa: ANN401
         """Execute the prompt and stream output chunks."""
         # Ensure a unique execution_id per execute() call
         base_meta = self._get_base_metadata(**kwargs)
@@ -45,6 +47,6 @@ class ProviderAdapter(ABC):
             yield chunk
 
     @abstractmethod
-    async def _execute(self, prompt: str, **kwargs: Any) -> AsyncIterator[OutputChunk]:
+    def _execute(self, prompt: str, **kwargs: Any) -> AsyncIterator[OutputChunk]:  # noqa: ANN401
         """Concrete implementation of prompt execution."""
-        pass
+        ...

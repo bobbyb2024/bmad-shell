@@ -1,13 +1,14 @@
 import asyncio
-import os
-import time
-import signal
-import fcntl
-import errno
 import codecs
-from typing import AsyncIterator, Any
+import errno
+import fcntl
+import os
+import signal
+import time
+from collections.abc import AsyncIterator
+
+from bmad_orch.exceptions import ProviderCrashError, ProviderTimeoutError
 from bmad_orch.types import OutputChunk
-from bmad_orch.exceptions import ProviderTimeoutError, ProviderCrashError
 
 
 async def spawn_pty_process(
@@ -37,10 +38,10 @@ async def spawn_pty_process(
         # We MUST close slave_fd in the parent process as soon as child has it
         os.close(slave_fd)
 
-    queue = asyncio.Queue()
+    queue: asyncio.Queue[bytes | Exception | None] = asyncio.Queue()
     loop = asyncio.get_running_loop()
 
-    def read_callback():
+    def read_callback() -> None:
         try:
             data = os.read(master_fd, 4096)
             if not data:
@@ -73,7 +74,7 @@ async def spawn_pty_process(
             elapsed = time.time() - start_time
             remaining = max(0.0, timeout - elapsed)
             if remaining <= 0:
-                raise asyncio.TimeoutError()
+                raise TimeoutError()
 
             try:
                 # Wait for data or timeout
@@ -88,7 +89,7 @@ async def spawn_pty_process(
                 if text:
                     yield OutputChunk(content=text, timestamp=time.time())
 
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 # Handle total timeout reached — kill entire process group
                 try:
                     os.killpg(process.pid, signal.SIGTERM)
@@ -96,13 +97,13 @@ async def spawn_pty_process(
                     process.terminate()
                 try:
                     await asyncio.wait_for(process.wait(), timeout=grace_period)
-                except asyncio.TimeoutError:
+                except TimeoutError:
                     try:
                         os.killpg(process.pid, signal.SIGKILL)
                     except (ProcessLookupError, PermissionError):
                         process.kill()
                     await process.wait()
-                raise ProviderTimeoutError(f"Process {cmd} timed out after {timeout}s")
+                raise ProviderTimeoutError(f"Process {cmd} timed out after {timeout}s") from None
 
         await process.wait()
         if process.returncode != 0:
@@ -124,7 +125,7 @@ async def spawn_pty_process(
                 process.terminate()
             try:
                 await asyncio.wait_for(process.wait(), timeout=grace_period)
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 try:
                     os.killpg(process.pid, signal.SIGKILL)
                 except (ProcessLookupError, PermissionError):

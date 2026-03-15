@@ -1,12 +1,12 @@
 import functools
 import logging
-import os
 import sys
 from collections import OrderedDict, defaultdict, deque
 from collections.abc import Awaitable, Callable
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 from logging.handlers import RotatingFileHandler
-from typing import Any, TypeVar
+from pathlib import Path
+from typing import TypeVar
 
 import structlog
 from structlog.types import EventDict, Processor
@@ -16,7 +16,7 @@ from bmad_orch.engine.events import LogLevel
 T = TypeVar("T")
 
 # Global storage for per-step logs
-STEP_LOGS: dict[str, deque[dict[str, Any]]] = defaultdict(deque)
+STEP_LOGS: dict[str, deque[dict[str, object]]] = defaultdict(deque)
 STEP_ORDER: OrderedDict[str, None] = OrderedDict()
 MAX_GLOBAL_ENTRIES = 50000
 _current_total_entries = 0
@@ -52,13 +52,13 @@ INTERNAL_FIELDS = (
     "_processors_meta",
 )
 
-def add_timestamp(_: Any, __: str, event_dict: EventDict) -> EventDict:
+def add_timestamp(_: object, __: str, event_dict: EventDict) -> EventDict:
     """Add ISO-8601 timestamp with microsecond precision."""
     if "timestamp" not in event_dict:
         event_dict["timestamp"] = datetime.now(UTC).isoformat(timespec="microseconds").replace("+00:00", "Z")
     return event_dict
 
-def add_severity(_: Any, method_name: str, event_dict: EventDict) -> EventDict:
+def add_severity(_: object, method_name: str, event_dict: EventDict) -> EventDict:
     """Map method name to LogLevel and add to event_dict."""
     level_name = method_name.upper()
     if level_name == "WARN":
@@ -76,11 +76,11 @@ def add_severity(_: Any, method_name: str, event_dict: EventDict) -> EventDict:
     event_dict["level_icon"] = SEVERITY_ICONS.get(level, "📝")
     return event_dict
 
-def inject_source(logger: Any, _: str, event_dict: EventDict) -> EventDict:
+def inject_source(logger: object, _: str, event_dict: EventDict) -> EventDict:
     """Inject 'source' as the Python module name if not present."""
     if "source" not in event_dict:
         if hasattr(logger, "name"):
-            event_dict["source"] = logger.name
+            event_dict["source"] = logger.name  # type: ignore[union-attr]
         elif "_logger" in event_dict: # Handle stdlib wrapper
             event_dict["source"] = event_dict["_logger"].name
         else:
@@ -88,14 +88,17 @@ def inject_source(logger: Any, _: str, event_dict: EventDict) -> EventDict:
             event_dict["source"] = "bmad_orch"
     return event_dict
 
-def capture_step_logs(_: Any, __: str, event_dict: EventDict) -> EventDict:
+def capture_step_logs(_: object, __: str, event_dict: EventDict) -> EventDict:
     """Capture logs for the current step if step_id is present."""
     step_id = event_dict.get("step_id")
     if step_id:
         global _current_total_entries
 
         # Capture all context for diagnosis, excluding internal implementation fields
-        entry = {k: v for k, v in event_dict.items() if k not in ("_record", "_from_structlog", "_logger", "_processors_meta")}
+        entry = {
+            k: v for k, v in event_dict.items()
+            if k not in ("_record", "_from_structlog", "_logger", "_processors_meta")
+        }
 
         # O(1) LRU update via OrderedDict
         STEP_ORDER.pop(step_id, None)
@@ -116,20 +119,20 @@ def capture_step_logs(_: Any, __: str, event_dict: EventDict) -> EventDict:
 
 class MachineRenderer:
     """Renders log entries in machine-friendly structured plain text."""
-    def __call__(self, _: Any, __: str, event_dict: EventDict) -> str:
+    def __call__(self, _: object, __: str, event_dict: EventDict) -> str:
         # Use .get() instead of .pop() to avoid issues with multiple handlers sharing event_dict
         ts = event_dict.get("timestamp", "UNKNOWN_TS")
         level = event_dict.get("level_name", "INFO ")
         msg = event_dict.get("event", "")
-        
+
         context = " ".join(f"{k}={v}" for k, v in event_dict.items() if k not in INTERNAL_FIELDS)
         ctx_str = f" [{context}]" if context else ""
-        
+
         return f"{ts} {level}{ctx_str} {msg}"
 
 class HumanRenderer:
     """Renders log entries in human-friendly format."""
-    def __call__(self, _: Any, __: str, event_dict: EventDict) -> str:
+    def __call__(self, _: object, __: str, event_dict: EventDict) -> str:
         ts = event_dict.get("timestamp", "UNKNOWN_TS")
         icon = event_dict.get("level_icon", "ℹ️ ")
         msg = event_dict.get("event", "")
@@ -150,7 +153,7 @@ def configure_logging(mode: str = "human", level: str = "INFO") -> None:
 
     # Ensure logs directory exists
     try:
-        os.makedirs("logs", exist_ok=True)
+        Path("logs").mkdir(parents=True, exist_ok=True)
     except OSError as e:
         print(f"Warning: Could not create logs directory: {e}", file=sys.stderr)
 
@@ -227,17 +230,17 @@ def configure_logging(mode: str = "human", level: str = "INFO") -> None:
         cache_logger_on_first_use=True,
     )
 
-def async_task_wrapper(func: Callable[..., Awaitable[T]]) -> Callable[..., Awaitable[T]]:
+def async_task_wrapper(func: Callable[..., Awaitable[T]]) -> Callable[..., Awaitable[T]]:  # noqa: UP047
     """Decorator to ensure structlog contextvars are cleared after async task execution."""
     @functools.wraps(func)
-    async def wrapper(*args: Any, **kwargs: Any) -> T:
+    async def wrapper(*args: object, **kwargs: object) -> T:
         try:
             return await func(*args, **kwargs)
         finally:
             structlog.contextvars.clear_contextvars()
     return wrapper
 
-def get_step_logs(step_id: str) -> list[dict[str, Any]]:
+def get_step_logs(step_id: str) -> list[dict[str, object]]:
     """Retrieve captured logs for a specific step."""
     return list(STEP_LOGS.get(step_id, []))
 

@@ -1,8 +1,7 @@
 import time
-from abc import ABC
 from dataclasses import dataclass, field
 from enum import IntEnum
-from typing import Optional
+
 
 class EscalationLevel(IntEnum):
     OK = 0
@@ -17,7 +16,7 @@ class LogLevel(IntEnum):
     CRITICAL = 50
 
 @dataclass(frozen=True, kw_only=True)
-class BaseEvent(ABC):
+class BaseEvent:
     timestamp: float = field(default_factory=time.time)
 
     def __post_init__(self) -> None:
@@ -49,7 +48,7 @@ class CycleCompleted(BaseEvent):
 @dataclass(frozen=True, kw_only=True)
 class EscalationChanged(BaseEvent):
     step_name: str
-    previous_level: Optional[EscalationLevel]
+    previous_level: EscalationLevel | None
     new_level: EscalationLevel
 
 @dataclass(frozen=True, kw_only=True)
@@ -68,6 +67,8 @@ class ProviderOutput(BaseEvent):
 class RunCompleted(BaseEvent):
     success: bool
     total_cycles: int
+    total_step_count: int
+    elapsed_time: float
     error_count: int
 
 @dataclass(frozen=True, kw_only=True)
@@ -76,6 +77,7 @@ class ErrorOccurred(BaseEvent):
     message: str
     source: str
     recoverable: bool
+    suggested_action: str = ""
 
 @dataclass(frozen=True, kw_only=True)
 class ResourceThresholdBreached(BaseEvent):

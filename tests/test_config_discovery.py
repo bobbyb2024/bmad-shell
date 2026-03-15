@@ -1,9 +1,11 @@
 import time
+from collections.abc import AsyncIterator
+from typing import Any
+from unittest.mock import AsyncMock, patch
+
 import pytest
 import yaml
-from typing import Any, AsyncIterator
 from typer.testing import CliRunner
-from unittest.mock import patch
 
 from bmad_orch.cli import app
 from bmad_orch.providers import clear_registry, register_adapter
@@ -149,6 +151,7 @@ def test_ac3_execution_single_provider(tmp_path):
 
     with patch("bmad_orch.cli.Runner") as mock_runner:
         mock_instance = mock_runner.return_value
+        mock_instance.run = AsyncMock()
 
         result = runner.invoke(app, ["start", "--config", str(config_file), "--no-preflight"])
         assert result.exit_code == 0

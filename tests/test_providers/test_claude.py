@@ -1,13 +1,11 @@
-import asyncio
-import os
-import subprocess
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
+
 import pytest
-import shutil
 
 from bmad_orch.exceptions import ProviderCrashError, ProviderError, ProviderTimeoutError, ProviderTransientError
 from bmad_orch.providers.claude import ClaudeAdapter
 from bmad_orch.types import OutputChunk
+
 
 @pytest.fixture(autouse=True)
 def _reset_claude_class_state():

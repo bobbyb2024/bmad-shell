@@ -1,9 +1,11 @@
-import pytest
 import asyncio
 import os
 import sys
+
+import pytest
+
+from bmad_orch.exceptions import ProviderCrashError, ProviderTimeoutError
 from bmad_orch.providers.utils import spawn_pty_process
-from bmad_orch.exceptions import ProviderTimeoutError, ProviderCrashError
 from bmad_orch.types import OutputChunk
 
 
@@ -44,7 +46,10 @@ def test_spawn_pty_process_decoding():
     async def run_test():
         # Test that it decodes UTF-8
         # We use python to write raw bytes to stdout
-        python_cmd = [sys.executable, "-c", "import sys; sys.stdout.buffer.write(b'hello \\xc3\\xa9'); sys.stdout.buffer.flush()"]
+        python_cmd = [
+            sys.executable, "-c",
+            "import sys; sys.stdout.buffer.write(b'hello \\xc3\\xa9'); sys.stdout.buffer.flush()",
+        ]
         chunks = []
         async for chunk in spawn_pty_process(python_cmd):
             chunks.append(chunk)

@@ -6,8 +6,8 @@ import shutil
 import subprocess
 import time
 from collections.abc import AsyncIterator
-from typing import Any
 from dataclasses import replace
+from typing import Any, cast
 
 from bmad_orch.exceptions import ProviderCrashError, ProviderError, ProviderTimeoutError, ProviderTransientError
 from bmad_orch.providers.base import ProviderAdapter
@@ -23,7 +23,7 @@ class ClaudeAdapter(ProviderAdapter):
     _cli_path: str | None = None
     _cli_version: str = "unknown"
 
-    def __init__(self, **config: Any) -> None:
+    def __init__(self, **config: Any) -> None:  # noqa: ANN401
         self.config = config
         # Regex for AC7: Corrupted/HTML Provider Output
         self._corruption_patterns = [
@@ -58,20 +58,23 @@ class ClaudeAdapter(ProviderAdapter):
             try:
                 # Early versions of 'claude' CLI might use 'models list' or similar.
                 output = subprocess.check_output([path, "models", "list", "--json"], stderr=subprocess.STDOUT)  # noqa: S603
-                models = json.loads(output)
-                if isinstance(models, list) and len(models) > 0 and all(isinstance(m, dict) and "id" in m for m in models):
-                    return models
+                parsed: Any = json.loads(output)
+                models = cast(list[Any], parsed)
+                if isinstance(parsed, list) and len(models) > 0 and all(
+                    isinstance(m, dict) and "id" in m for m in models
+                ):
+                    return cast(list[dict[str, Any]], parsed)
             except (subprocess.SubprocessError, json.JSONDecodeError, UnicodeDecodeError):
                 pass
 
         # Fallback list as mandated by AC2.
-        fallback = self.config.get("default_models") or [
+        fallback: list[dict[str, Any]] = self.config.get("default_models") or [
             {"id": "claude-3-5-sonnet-latest", "name": "Claude 3.5 Sonnet"},
             {"id": "claude-3-opus-latest", "name": "Claude 3 Opus"}
         ]
         return fallback
 
-    async def _execute(self, prompt: str, **kwargs: Any) -> AsyncIterator[OutputChunk]:
+    async def _execute(self, prompt: str, **kwargs: Any) -> AsyncIterator[OutputChunk]:  # noqa: ANN401
         """Implementation of prompt execution via spawn_pty_process. AC3-8."""
         model = kwargs.get("model") or self.config.get("model") or "claude-3-5-sonnet-latest"
         api_key = kwargs.get("api_key") or self.config.get("api_key") or os.environ.get("ANTHROPIC_API_KEY")

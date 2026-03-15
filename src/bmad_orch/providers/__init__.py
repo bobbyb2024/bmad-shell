@@ -1,5 +1,3 @@
-from typing import Any
-
 from bmad_orch.exceptions import ProviderNotFoundError
 from bmad_orch.providers.base import ProviderAdapter
 from bmad_orch.providers.claude import ClaudeAdapter
@@ -14,7 +12,7 @@ _instances: dict[str, ProviderAdapter] = {}
 
 def register_adapter(name: str, adapter_cls: type[ProviderAdapter]) -> None:
     """Register a new provider adapter class."""
-    if not isinstance(adapter_cls, type) or not issubclass(adapter_cls, ProviderAdapter):
+    if not isinstance(adapter_cls, type) or not issubclass(adapter_cls, ProviderAdapter):  # pyright: ignore[reportUnnecessaryIsInstance]
         msg = f"adapter_cls must be a subclass of ProviderAdapter, got {adapter_cls}"
         raise TypeError(msg)
 
@@ -29,7 +27,7 @@ register_adapter("claude", ClaudeAdapter)
 register_adapter("gemini", GeminiAdapter)
 
 
-def get_adapter(name: str, **config: Any) -> ProviderAdapter:
+def get_adapter(name: str, **config: object) -> ProviderAdapter:
     """Get an instantiated adapter for the requested provider."""
     normalized_name = name.lower()
 
@@ -57,4 +55,9 @@ def clear_registry() -> None:
     _instances.clear()
 
 
-__all__ = ["ProviderAdapter", "get_adapter", "register_adapter", "clear_registry"]
+def get_registry() -> dict[str, type[ProviderAdapter]]:
+    """Return a copy of the provider registry. For use by discovery/validation."""
+    return dict(_registry)
+
+
+__all__ = ["ProviderAdapter", "get_adapter", "register_adapter", "clear_registry", "get_registry"]

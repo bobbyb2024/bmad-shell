@@ -1,28 +1,34 @@
 import pathlib
 import sys
-from typing import Any
+from typing import Any, cast
 
 import yaml
 
 from bmad_orch.config.schema import OrchestratorConfig, validate_config
 from bmad_orch.exceptions import ConfigError, ConfigProviderError
-from bmad_orch.providers import _registry
 
 _MAX_CONFIG_SIZE = 1_048_576  # 1 MB
 
 
-def validate_provider_availability(config: OrchestratorConfig) -> None:
+def validate_provider_availability(
+    config: OrchestratorConfig,
+    registry: dict[str, Any] | None = None,
+) -> None:
     """Validate that all providers referenced in the config are available.
 
     Args:
         config (OrchestratorConfig): The validated configuration.
+        registry: Provider adapter class registry. If None, imports from providers.
 
     Raises:
         ConfigError: If a referenced provider is missing, or if no providers are detected.
     """
+    if registry is None:
+        msg = "registry must be provided (pass providers.get_registry() from the caller)"
+        raise ConfigError(msg)
     # Map provider name -> set of custom CLI paths used in config
     referenced_providers: dict[str, set[str | None]] = {}
-    for pid, pcfg in config.providers.items():
+    for _pid, pcfg in config.providers.items():
         name = pcfg.name.lower()
         if name not in referenced_providers:
             referenced_providers[name] = set()
@@ -31,9 +37,10 @@ def validate_provider_availability(config: OrchestratorConfig) -> None:
     detected_providers: dict[str, dict[str | None, bool]] = {}
     
     # We check ALL registered providers to provide install hints if NONE are found
-    for name, adapter_cls in _registry.items():
+    for name, adapter_cls in registry.items():
         detected_providers[name] = {}
-        
+        adapter: Any = None
+
         # 1. Check default detection (for AC4 "No providers detected")
         try:
             adapter = adapter_cls()
@@ -43,19 +50,22 @@ def validate_provider_availability(config: OrchestratorConfig) -> None:
             detected_providers[name][None] = False
 
         # 2. Check specific CLI paths referenced in config (for AC1/AC2)
-        if name in referenced_providers:
+        if name in referenced_providers and adapter is not None:
             for custom_cli in referenced_providers[name]:
                 if custom_cli is None:
                     continue
                 try:
-                    # We can reuse the adapter instance or create a new one, 
+                    # We can reuse the adapter instance or create a new one,
                     # detect() should be stateless or handle its own caching.
                     if adapter.detect(cli_path=custom_cli):
                         detected_providers[name][custom_cli] = True
                     else:
                         detected_providers[name][custom_cli] = False
                 except Exception as e:
-                    print(f"WARNING: Unexpected error detecting provider '{name}' (custom: {custom_cli}): {e}", file=sys.stderr)
+                    print(
+                        f"WARNING: Unexpected error detecting provider '{name}' (custom: {custom_cli}): {e}",
+                        file=sys.stderr,
+                    )
                     detected_providers[name][custom_cli] = False
 
     # AC4: No providers detected at all (check all default and custom detections)
@@ -66,13 +76,13 @@ def validate_provider_availability(config: OrchestratorConfig) -> None:
             break
             
     if not any_detected:
-        error_lines = ["✗ No CLI providers detected. Please install at least one:"]
-        for name, adapter_cls in _registry.items():
+        error_lines: list[str] = ["✗ No CLI providers detected. Please install at least one:"]
+        for name, adapter_cls in registry.items():
             error_lines.append(f"  - {name}: {adapter_cls.install_hint}")
         raise ConfigError("\n".join(error_lines))
 
     # AC1: Missing referenced provider
-    missing_referenced = []
+    missing_referenced: list[tuple[str, str | None]] = []
     for name, custom_paths in referenced_providers.items():
         for path in custom_paths:
             # If path is None, check default. If path is set, check specific.
@@ -80,14 +90,14 @@ def validate_provider_availability(config: OrchestratorConfig) -> None:
                 missing_referenced.append((name, path))
 
     if missing_referenced:
-        error_lines = ["✗ Missing referenced provider(s):"]
+        error_lines_missing: list[str] = ["✗ Missing referenced provider(s):"]
         for name, path in missing_referenced:
-            adapter_cls = _registry.get(name)
-            hint = adapter_cls.install_hint if adapter_cls else "Install the CLI for this provider."
-            display_name = f"{name} (cli: {path})" if path else name
-            error_lines.append(f"  - {display_name}: {hint}")
-        error_lines.append("OR update your config to use an available provider.")
-        raise ConfigProviderError("\n".join(error_lines))
+            ref_adapter_cls = registry.get(name)
+            hint: str = ref_adapter_cls.install_hint if ref_adapter_cls else "Install the CLI for this provider."
+            display_name: str = f"{name} (cli: {path})" if path else name
+            error_lines_missing.append(f"  - {display_name}: {hint}")
+        error_lines_missing.append("OR update your config to use an available provider.")
+        raise ConfigProviderError("\n".join(error_lines_missing))
 
     # AC2 & AC3: Single-provider or all referenced providers present - validation passes.
 
@@ -156,7 +166,7 @@ def load_config_file(path: pathlib.Path) -> dict[str, Any]:
     if not isinstance(data, dict):
         raise ConfigError(f"✗ Config file '{path}' does not contain a YAML mapping — check the file structure")
 
-    return data
+    return cast(dict[str, Any], data)
 
 
 def get_config(explicit_path: str | None = None) -> tuple[OrchestratorConfig, pathlib.Path]:

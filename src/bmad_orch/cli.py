@@ -1,3 +1,4 @@
+import asyncio
 import hashlib
 import pathlib
 import subprocess
@@ -5,13 +6,11 @@ import sys
 import time
 import traceback
 import uuid
-import asyncio
 from typing import Annotated, Literal
 
 import typer
 from rich.console import Console
 from rich.live import Live
-from rich.panel import Panel
 from rich.text import Text
 
 from bmad_orch.config import (
@@ -20,10 +19,11 @@ from bmad_orch.config import (
     validate_config,
     validate_provider_availability,
 )
-from bmad_orch.exceptions import BmadOrchError, ConfigError, ConfigProviderError, StateError
-from bmad_orch.rendering.summary import render_playbook_summary
 from bmad_orch.engine.runner import Runner
-from bmad_orch.state import StateManager, RunState
+from bmad_orch.exceptions import BmadOrchError, ConfigProviderError, StateError
+from bmad_orch.providers import get_adapter, get_registry
+from bmad_orch.rendering.summary import render_playbook_summary
+from bmad_orch.state import RunState, StateManager
 
 app = typer.Typer(help="BMAD Orchestrator - End-to-end automated story execution.")
 
@@ -36,10 +36,10 @@ def get_error_console() -> Console:
 
 def get_config_hash(path: pathlib.Path) -> str:
     """Calculate MD5 hash of the normalized config file."""
-    with open(path, "rb") as f:
+    with path.open("rb") as f:
         return hashlib.md5(f.read(), usedforsecurity=False).hexdigest()
 
-def handle_confirmation(config_path: pathlib.Path) -> Literal["proceed", "quit", "modify"]:
+def handle_confirmation(_config_path: pathlib.Path) -> Literal["proceed", "quit", "modify"]:
     """Handle user confirmation at pre-flight summary."""
     prompt = Text.from_markup("\n[bold cyan]Confirmation:[/bold cyan] [Enter] to proceed, [m] to modify, [q] to quit")
     get_console().print(prompt)
@@ -66,6 +66,7 @@ def handle_auto_dismiss() -> Literal["proceed", "pause", "quit"]:
     # Check if stdin is a TTY for character-at-a-time reading
     is_tty = sys.stdin.isatty()
     old_settings = None
+    fd: int = -1
     try:
         fd = sys.stdin.fileno()
     except (AttributeError, ValueError):
@@ -90,7 +91,9 @@ def handle_auto_dismiss() -> Literal["proceed", "pause", "quit"]:
                 if remaining <= 0:
                     return "proceed"
                 
-                msg = Text.from_markup(f"\nProceeding in {remaining:.1f}s... (any key to skip, [p] to pause, [q] to quit)")
+                msg = Text.from_markup(
+                    f"\nProceeding in {remaining:.1f}s... (any key to skip, [p] to pause, [q] to quit)"
+                )
                 live.update(msg)
                 
                 # Check for key press
@@ -134,7 +137,7 @@ def open_editor(path: pathlib.Path) -> bool:
     
     try:
         # Use subprocess.run to ensure terminal stays interactive
-        subprocess.run([editor, str(path)], check=True)
+        subprocess.run([editor, str(path)], check=True)  # noqa: S603
         return True
     except subprocess.CalledProcessError as e:
         get_error_console().print(f"[red]Editor exited with error (code {e.returncode}).[/red]")
@@ -148,14 +151,13 @@ def start(
     config: Annotated[str | None, typer.Option("--config", "-c", help="Path to bmad-orch.yaml")] = None,
     dry_run: bool = typer.Option(False, "--dry-run", help="Show execution plan without invoking providers"),
     no_preflight: bool = typer.Option(False, "--no-preflight", help="Skip pre-flight confirmation"),
-    headless: bool = typer.Option(False, "--headless", help="Run without TUI"),
+    _headless: bool = typer.Option(False, "--headless", help="Run without TUI"),
 ) -> None:
     """Start a new orchestrator run."""
-    console = get_console()
     error_console = get_error_console()
     try:
         cfg, source_path = get_config(config)
-        validate_provider_availability(cfg)
+        validate_provider_availability(cfg, registry=get_registry())
     except ConfigProviderError as e:
         error_console.print(f"[red]{e}[/red]")
         raise typer.Exit(code=2) from e
@@ -227,7 +229,7 @@ def start(
         error_console.print(f"[red]Warning: Could not save state file: {e}[/red]")
 
     # Initialize and run
-    runner = Runner(config=cfg, state_path=state_path)
+    runner = Runner(config=cfg, state_path=state_path, adapter_factory=get_adapter)
     asyncio.run(runner.run(dry_run=False))
 
 @app.command()
@@ -251,11 +253,11 @@ def validate(
 ) -> None:
     """Check config schema and provider availability."""
     console = get_console()
-    error_console = get_error_console()
     try:
         cfg, source_path = get_config(config)
-        validate_provider_availability(cfg)
-        console.print(f"[green]✓ Configuration is valid and providers are available.[/green] (loaded from {source_path})")
+        validate_provider_availability(cfg, registry=get_registry())
+        msg = f"[green]✓ Configuration is valid and providers are available.[/green] (loaded from {source_path})"
+        console.print(msg, soft_wrap=True)
 
         # Report providers and models
         console.print("\n[bold]Detected Configuration:[/bold]")
@@ -263,11 +265,11 @@ def validate(
             console.print(f"  [blue]Provider {pid}:[/blue] {pcfg.name} (model: {pcfg.model})")
 
     except BmadOrchError as e:
-        error_console.print(f"[red]{e}[/red]")
+        console.print(f"[red]{e}[/red]")
         raise typer.Exit(code=2) from e
     except Exception as e:
-        error_console.print(f"[red]✗ Unexpected error — {e}[/red]", highlight=False)
-        error_console.print(f"[dim]{traceback.format_exc()}[/dim]", highlight=False)
+        console.print(f"[red]✗ Unexpected error — {e}[/red]", highlight=False)
+        console.print(f"[dim]{traceback.format_exc()}[/dim]", highlight=False)
         raise typer.Exit(code=1) from e
 
 

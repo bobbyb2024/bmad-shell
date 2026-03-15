@@ -1,6 +1,7 @@
-from dataclasses import is_dataclass, fields
-from bmad_orch.types import OutputChunk, ErrorSeverity
 import time
+from dataclasses import is_dataclass
+
+from bmad_orch.types import ErrorSeverity, OutputChunk
 
 
 def test_output_chunk_structure():
@@ -11,8 +12,9 @@ def test_output_chunk_structure():
     assert chunk.metadata["execution_id"] == "123"
 
 def test_output_chunk_immutability():
-    import pytest
     from dataclasses import FrozenInstanceError
+
+    import pytest
     chunk = OutputChunk(content="test", timestamp=time.time())
     with pytest.raises(FrozenInstanceError):
         chunk.content = "new"

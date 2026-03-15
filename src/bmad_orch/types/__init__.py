@@ -36,4 +36,4 @@ class EscalationState(Enum):
 class OutputChunk:
     content: str
     timestamp: float
-    metadata: dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=lambda: {})

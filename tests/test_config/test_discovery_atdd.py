@@ -1,8 +1,29 @@
-import yaml
-import pytest
 import copy
+import time
+from collections.abc import AsyncIterator
+from typing import Any
+
+import pytest
+import yaml
 from typer.testing import CliRunner
+
 from bmad_orch.cli import app
+from bmad_orch.providers import register_adapter
+from bmad_orch.providers.base import ProviderAdapter
+from bmad_orch.types import OutputChunk
+
+
+class _AlwaysDetectedAdapter(ProviderAdapter):
+    install_hint = "test-only"
+
+    def detect(self, cli_path: str | None = None) -> bool:
+        return True
+
+    def list_models(self) -> list[dict[str, Any]]:
+        return [{"id": "test"}]
+
+    async def _execute(self, prompt: str, **kwargs: Any) -> AsyncIterator[OutputChunk]:
+        yield OutputChunk(content="ok", timestamp=time.time(), metadata={})
 
 VALID_CONFIG_DATA = {
     "providers": {1: {"name": "p1", "cli": "c1", "model": "m1"}},
@@ -28,6 +49,14 @@ VALID_CONFIG_DATA = {
 
 runner = CliRunner()
 
+
+@pytest.fixture(autouse=True)
+def _register_test_providers():
+    """Register adapters for provider names used in discovery test configs."""
+    register_adapter("p1", _AlwaysDetectedAdapter)
+    register_adapter("explicit-provider", _AlwaysDetectedAdapter)
+
+
 @pytest.fixture
 def config_factory():
     """Data factory for configuration objects with overrides."""
@@ -40,7 +69,6 @@ def config_factory():
         return data
     return _create
 
-@pytest.mark.skip(reason="RED PHASE: Story 1-3 AC1 - CWD discovery")
 def test_config_discovery_cwd(tmp_path, monkeypatch, config_factory):
     """
     AC 1: Given a bmad-orch.yaml exists in the current working directory, 
@@ -60,7 +88,6 @@ def test_config_discovery_cwd(tmp_path, monkeypatch, config_factory):
     # Should report the path it loaded from
     assert str(config_file.resolve()) in result.stdout
 
-@pytest.mark.skip(reason="RED PHASE: Story 1-3 AC2 - Explicit path overrides CWD")
 def test_config_discovery_explicit_path_overrides_cwd(tmp_path, monkeypatch, config_factory):
     """
     AC 2: Given a config file exists at /path/to/my-config.yaml, 
@@ -88,7 +115,6 @@ def test_config_discovery_explicit_path_overrides_cwd(tmp_path, monkeypatch, con
     assert "explicit-provider" in result.stdout
     assert str(explicit_config.resolve()) in result.stdout
 
-@pytest.mark.skip(reason="RED PHASE: Story 1-3 AC3 - Exit code 2 if no config found")
 def test_config_discovery_no_config_found(tmp_path, monkeypatch):
     """
     AC 3: Given no bmad-orch.yaml exists in cwd and no --config flag is provided, 
@@ -104,7 +130,6 @@ def test_config_discovery_no_config_found(tmp_path, monkeypatch):
     assert "No config found" in result.stdout
     assert "create bmad-orch.yaml or use --config" in result.stdout
 
-@pytest.mark.skip(reason="RED PHASE: Story 1-3 AC4 - Success report with valid config")
 def test_config_discovery_success_report(tmp_path, monkeypatch, config_factory):
     """
     AC 4: Given a valid config file, 
@@ -125,7 +150,6 @@ def test_config_discovery_success_report(tmp_path, monkeypatch, config_factory):
     assert "p1" in result.stdout 
     assert "m1" in result.stdout
 
-@pytest.mark.skip(reason="RED PHASE: Story 1-3 AC5 - YAML syntax error")
 def test_config_discovery_yaml_syntax_error(tmp_path, monkeypatch):
     """
     AC 5: Given a config file with a YAML syntax error, 

@@ -1,13 +1,16 @@
 import pathlib
+import time
 import tomllib
+from collections.abc import AsyncIterator
+from typing import Any
+
 import pytest
 import yaml
-import time
-from typing import AsyncIterator, Any
-from bmad_orch.providers import ProviderAdapter, register_adapter, clear_registry
-from bmad_orch.types import OutputChunk
+
+from bmad_orch.providers import ProviderAdapter, clear_registry, register_adapter
 from bmad_orch.providers.claude import ClaudeAdapter
 from bmad_orch.providers.gemini import GeminiAdapter
+from bmad_orch.types import OutputChunk
 
 VALID_CONFIG_DATA = {
     "providers": {1: {"name": "p1", "cli": "c1", "model": "m1"}},

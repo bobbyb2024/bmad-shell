@@ -1,7 +1,7 @@
-import pathlib
 import pytest
 import yaml
 from typer.testing import CliRunner
+
 from bmad_orch.cli import app
 
 runner = CliRunner()
@@ -25,7 +25,7 @@ def config_file(tmp_path):
         "error_handling": {"retry_transient": True, "max_retries": 3, "retry_delay": 10.0},
     }
     cfg_path = tmp_path / "bmad-orch.yaml"
-    with open(cfg_path, "w") as f:
+    with cfg_path.open("w") as f:
         yaml.dump(d, f)
     return cfg_path
 
@@ -62,9 +62,9 @@ def test_cli_dry_run_invalid_provider_reference(tmp_path):
         "error_handling": {"retry_transient": True, "max_retries": 3, "retry_delay": 10.0},
     }
     cfg_path = tmp_path / "bad-orch.yaml"
-    with open(cfg_path, "w") as f:
+    with cfg_path.open("w") as f:
         yaml.dump(d, f)
-    
+
     result = runner.invoke(app, ["start", "--config", str(cfg_path), "--dry-run"])
     assert result.exit_code == 2
     # AC5: Error goes to stderr via Console(stderr=True) in production.

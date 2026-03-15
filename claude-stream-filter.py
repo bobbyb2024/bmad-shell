@@ -6,8 +6,8 @@ Reads stream-json lines from stdin and outputs human-readable text in real-time.
 Extracts: assistant text, tool calls, tool results, cost, and duration.
 Suppresses: hooks, system init, rate limits, and other noise.
 """
-import sys
 import json
+import sys
 
 for line in sys.stdin:
     line = line.strip()

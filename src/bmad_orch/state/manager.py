@@ -1,15 +1,14 @@
-import os
-import uuid
-import time
-import logging
 import json
+import logging
+import time
+import uuid
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Optional
-from datetime import datetime, timezone
+
 from pydantic import ValidationError
 
-from bmad_orch.state.schema import RunState, StepRecord, CycleRecord
 from bmad_orch.exceptions import StateError
+from bmad_orch.state.schema import CycleRecord, RunState, StepRecord
 from bmad_orch.types import StepOutcome
 
 logger = logging.getLogger(__name__)
@@ -21,12 +20,12 @@ class StateManager:
     EXPECTED_SCHEMA_VERSION = 1
 
     @staticmethod
-    def _fresh_state(expected_hash: Optional[str] = None) -> RunState:
+    def _fresh_state(expected_hash: str | None = None) -> RunState:
         """Create a fresh RunState with a new run_id."""
         return RunState(run_id=str(uuid.uuid4()), config_hash=expected_hash)
 
     @staticmethod
-    def load(path: Optional[Path] = None, expected_hash: Optional[str] = None) -> RunState:
+    def load(path: Path | None = None, expected_hash: str | None = None) -> RunState:
         """Loads state from file, returning fresh state if file doesn't exist."""
         path = path or Path(StateManager.DEFAULT_STATE_FILE)
 
@@ -44,7 +43,7 @@ class StateManager:
             return StateManager._fresh_state(expected_hash)
 
         try:
-            with open(path, "r", encoding="utf-8") as f:
+            with path.open(encoding="utf-8") as f:
                 state = RunState.model_validate_json(f.read())
 
             # AC8: Schema version mismatch is a validation failure
@@ -79,32 +78,33 @@ class StateManager:
             raise StateError(f"Failed to load state from {path}") from e
 
     @staticmethod
-    def save(state: RunState, path: Path):
+    def save(state: RunState, path: Path) -> None:
         """Saves state atomically using temp file and rename."""
+        temp_path: Path | None = None
         try:
             path.parent.mkdir(parents=True, exist_ok=True)
-            
+
             # Create unique temp file in same directory
             temp_path = path.parent / f".{path.name}.{uuid.uuid4()}.tmp"
-            
-            with open(temp_path, "w", encoding="utf-8") as f:
+
+            with temp_path.open("w", encoding="utf-8") as f:
                 f.write(state.model_dump_json(indent=2))
-            
+
             # Atomic replace
-            os.replace(temp_path, path)
+            temp_path.replace(path)
         except Exception as e:
             logger.error(f"Failed to save state to {path}: {e}")
-            if 'temp_path' in locals() and temp_path.exists():
+            if temp_path is not None and temp_path.exists():
                 try:
                     temp_path.unlink()
                 except Exception:
-                    pass
+                    logger.debug(f"Failed to clean up temp file {temp_path}")
             raise StateError(f"Failed to save state to {path}: {e}") from e
 
     @staticmethod
     def record_step(state: RunState, cycle_id: str, step_record: StepRecord) -> RunState:
         """Helper to record a step result into the given state instance."""
-        new_history = []
+        new_history: list[CycleRecord] = []
         found_cycle = False
         
         for cycle in state.run_history:
@@ -122,11 +122,11 @@ class StateManager:
         return state.model_copy(update={"run_history": new_history})
 
     @staticmethod
-    def start_cycle(state: RunState, cycle_id: str, started_at: Optional[datetime] = None) -> RunState:
+    def start_cycle(state: RunState, cycle_id: str, started_at: datetime | None = None) -> RunState:
         """Creates and appends a new CycleRecord to the run history."""
-        started_at = started_at or datetime.now(timezone.utc)
+        started_at = started_at or datetime.now(UTC)
         new_cycle = CycleRecord(cycle_id=cycle_id, started_at=started_at)
-        new_history = list(state.run_history) + [new_cycle]
+        new_history: list[CycleRecord] = [*state.run_history, new_cycle]
         return state.model_copy(update={"run_history": new_history})
 
     @staticmethod
@@ -134,11 +134,11 @@ class StateManager:
         state: RunState,
         cycle_id: str,
         outcome: StepOutcome,
-        finished_at: Optional[datetime] = None
+        finished_at: datetime | None = None
     ) -> RunState:
         """Updates an existing CycleRecord with outcome and finish time."""
-        finished_at = finished_at or datetime.now(timezone.utc)
-        new_history = []
+        finished_at = finished_at or datetime.now(UTC)
+        new_history: list[CycleRecord] = []
         found_cycle = False
         
         for cycle in state.run_history:
@@ -163,10 +163,10 @@ class StateManager:
         Returns True if the rename succeeded (caller should raise StateError),
         False if the rename failed (caller should return fresh state per AC8).
         """
-        timestamp = datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
+        timestamp = datetime.now(UTC).strftime("%Y%m%d%H%M%S")
         corrupt_path = path.with_suffix(f"{path.suffix}.corrupt.{timestamp}")
         try:
-            os.replace(path, corrupt_path)
+            path.replace(corrupt_path)
             logger.info(f"Renamed corrupt state file to {corrupt_path}")
             return True
         except Exception as e:
@@ -174,7 +174,7 @@ class StateManager:
             return False
 
     @staticmethod
-    def _cleanup_stale_temp_files(state_path: Path):
+    def _cleanup_stale_temp_files(state_path: Path) -> None:
         """Removes .tmp files older than 24 hours in the state file's directory."""
         directory = state_path.parent
         pattern = f".{state_path.name}.*.tmp"

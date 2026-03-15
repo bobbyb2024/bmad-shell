@@ -24,6 +24,7 @@ bmad-orch = "bmad_orch.cli:app"
 [tool.ruff]
 line-length = 120
 target-version = "py313"
+extend-exclude = [".claude/worktrees"]
 
 [tool.ruff.lint]
 select = ["E", "F", "B", "I", "N", "UP", "ANN", "S", "PT", "ARG", "PTH", "TD", "FIX"]

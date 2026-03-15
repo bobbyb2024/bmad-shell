@@ -1,4 +1,5 @@
-from typing import Any
+from dataclasses import dataclass
+
 from bmad_orch.types import ErrorSeverity
 
 
@@ -19,6 +20,12 @@ class ConfigError(BmadOrchError):
 
 class ConfigProviderError(ConfigError):
     """Raised when a configuration references a nonexistent provider."""
+
+
+class TemplateVariableError(BmadOrchError):
+    """Raised when a prompt contains unresolved variables."""
+    def __init__(self, message: str, severity: ErrorSeverity = ErrorSeverity.BLOCKING) -> None:
+        super().__init__(message, severity)
 
 
 class ProviderError(BmadOrchError):
@@ -79,3 +86,23 @@ class WizardError(BmadOrchError):
 
     def __init__(self, message: str, severity: ErrorSeverity = ErrorSeverity.BLOCKING) -> None:
         super().__init__(message, severity)
+
+@dataclass(frozen=True)
+class ErrorClassification:
+    is_recoverable: bool
+    severity: ErrorSeverity
+
+def classify_error(error: Exception) -> ErrorClassification:
+    if isinstance(error, BmadOrchError):
+        sev = error.severity
+        return ErrorClassification(is_recoverable=(sev == ErrorSeverity.RECOVERABLE), severity=sev)
+
+    status: int | None = getattr(error, 'status_code', None)
+    if status in (429, 502, 503, 504):
+        return ErrorClassification(is_recoverable=True, severity=ErrorSeverity.RECOVERABLE)
+
+    exit_code: int | None = getattr(error, 'exit_code', None)
+    if exit_code is not None and exit_code != 0:
+        return ErrorClassification(is_recoverable=False, severity=ErrorSeverity.IMPACTFUL)
+
+    return ErrorClassification(is_recoverable=False, severity=ErrorSeverity.IMPACTFUL)

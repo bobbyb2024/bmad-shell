@@ -1,7 +1,8 @@
 import pytest
-from rich.console import Console
+
 from bmad_orch.config.schema import validate_config
 from bmad_orch.rendering.summary import render_playbook_summary
+
 
 @pytest.fixture
 def valid_config():

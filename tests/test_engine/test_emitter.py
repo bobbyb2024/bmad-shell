@@ -1,6 +1,8 @@
 import logging
+
 import pytest
-from bmad_orch.engine import BaseEvent, StepStarted, StepCompleted, EventEmitter
+
+from bmad_orch.engine import BaseEvent, EventEmitter, StepCompleted, StepStarted
 
 
 def test_subscribe_and_emit():
@@ -48,7 +50,8 @@ def test_base_event_catch_all():
     
     assert received_specific == ["specific"]
     assert received_base == ["base"]
-    # AC4: All subscribers for that specific event type are invoked first, followed by all BaseEvent catch-all subscribers.
+    # AC4: All subscribers for that specific event type are invoked first,
+    # followed by all BaseEvent catch-all subscribers.
     # We can't easily check order without a shared list.
     
     received_all = []

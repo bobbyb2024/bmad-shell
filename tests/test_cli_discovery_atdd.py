@@ -1,13 +1,39 @@
+import time
+from collections.abc import AsyncIterator
+from typing import Any
+
 import pytest
 from typer.testing import CliRunner
 
 from bmad_orch.cli import app
+from bmad_orch.providers import register_adapter
+from bmad_orch.providers.base import ProviderAdapter
+from bmad_orch.types import OutputChunk
+
+
+class _AlwaysDetectedAdapter(ProviderAdapter):
+    install_hint = "test-only"
+
+    def detect(self, cli_path: str | None = None) -> bool:
+        return True
+
+    def list_models(self) -> list[dict[str, Any]]:
+        return [{"id": "test"}]
+
+    async def _execute(self, prompt: str, **kwargs: Any) -> AsyncIterator[OutputChunk]:
+        yield OutputChunk(content="ok", timestamp=time.time(), metadata={})
+
 
 # Initialize CliRunner for Typer CLI testing
 runner = CliRunner()
 
 
-@pytest.mark.skip(reason="TDD RED PHASE: Story 1.3 AC1 - CWD discovery of bmad-orch.yaml via 'bmad-orch validate'")
+@pytest.fixture(autouse=True)
+def _register_test_providers():
+    """Register adapter for provider name 'p1' used in VALID_CONFIG_DATA."""
+    register_adapter("p1", _AlwaysDetectedAdapter)
+
+
 def test_cli_validate_cwd_discovery_ac1(tmp_path, monkeypatch, valid_config_file):
     """
     GIVEN a 'bmad-orch.yaml' exists in the current working directory
@@ -28,7 +54,6 @@ def test_cli_validate_cwd_discovery_ac1(tmp_path, monkeypatch, valid_config_file
     assert "bmad-orch.yaml" in result.stdout
 
 
-@pytest.mark.skip(reason="TDD RED PHASE: Story 1.3 AC2 - Explicit path '--config' overrides CWD")
 def test_cli_validate_explicit_path_override_ac2(tmp_path, monkeypatch, valid_config_file):
     """
     GIVEN a config file exists at an explicit path
@@ -53,7 +78,6 @@ def test_cli_validate_explicit_path_override_ac2(tmp_path, monkeypatch, valid_co
     assert "Configuration is valid" in result.stdout
 
 
-@pytest.mark.skip(reason="TDD RED PHASE: Story 1.3 AC3 - Exit code 2 if no config found")
 def test_cli_validate_exit_code_2_no_config_ac3(tmp_path, monkeypatch):
     """
     GIVEN no 'bmad-orch.yaml' exists in cwd and no '--config' flag is provided
@@ -70,7 +94,6 @@ def test_cli_validate_exit_code_2_no_config_ac3(tmp_path, monkeypatch):
     assert "create bmad-orch.yaml or use --config" in result.stdout
 
 
-@pytest.mark.skip(reason="TDD RED PHASE: Story 1.3 AC4 - Success report confirms provider/model names")
 def test_cli_validate_success_report_details_ac4(valid_config_file):
     """
     GIVEN a valid config file
@@ -87,7 +110,6 @@ def test_cli_validate_success_report_details_ac4(valid_config_file):
     assert "m1" in result.stdout
 
 
-@pytest.mark.skip(reason="TDD RED PHASE: Story 1.3 AC5 - YAML syntax error (exit 2)")
 def test_cli_validate_yaml_syntax_error_ac5(tmp_path, monkeypatch):
     """
     GIVEN a config file with a YAML syntax error

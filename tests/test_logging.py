@@ -1,9 +1,19 @@
-import os
+import asyncio
 import logging
+import os
+from pathlib import Path
+
 import pytest
 import structlog
-import asyncio
-from bmad_orch.logging import configure_logging, async_task_wrapper, get_step_logs, consolidate_step_logs, reset_step_logs
+
+from bmad_orch.logging import (
+    async_task_wrapper,
+    configure_logging,
+    consolidate_step_logs,
+    get_step_logs,
+    reset_step_logs,
+)
+
 
 @pytest.fixture(autouse=True)
 def cleanup_logs():
@@ -58,7 +68,7 @@ def test_file_logging(tmp_path):
     log_dir = tmp_path / "logs"
     log_file = log_dir / "bmad.log"
     
-    original_cwd = os.getcwd()
+    original_cwd = Path.cwd()
     os.chdir(tmp_path)
     try:
         configure_logging(mode="machine")
@@ -105,7 +115,7 @@ async def test_async_task_wrapper_cleanup():
     
     @async_task_wrapper
     async def some_task():
-        structlog.contextvars.bind_contextvars(secret="data")
+        structlog.contextvars.bind_contextvars(secret="data")  # noqa: S106
         return "done"
 
     await some_task()

@@ -1,6 +1,6 @@
 # Story 3.5: Error Detection & Classification
 
-Status: ready-for-dev
+Status: done
 
 ## Story
 
@@ -35,6 +35,13 @@ so that transient issues are retried silently while serious failures are surface
    **When** I inspect the implementation
    **Then** the engine checks `error.severity` (the `ErrorSeverity` enum), not `isinstance()` checks against exception subclasses
 
+## Tasks/Subtasks
+
+- [x] 1. Update exception and typing classes for ErrorSeverity classification logic.
+- [x] 2. Implement `classify_error` based on HTTP status / exit codes.
+- [x] 3. Update CycleExecutor to gracefully handle and emit `ErrorOccurred` for IMPACTFUL.
+- [x] 4. Enforce strict logging format and contextvars bindings.
+
 ## Dev Notes
 
 - **Architecture Rules:** Ensure zombie process cleanup is adhered to! Every error path, cancellation path, and timeout handler must explicitly call `process.kill()` + `await process.wait()`. No subprocess reference may be discarded without cleanup.
@@ -62,5 +69,16 @@ so that transient issues are retried silently while serious failures are surface
 ### Debug Log References
 
 ### Completion Notes List
+- Code review fixed 3 HIGH and 3 MEDIUM issues (2026-03-14):
+  - HIGH: Recoverable errors now continue execution instead of halting the cycle (AC2 fix)
+  - HIGH: Removed dead `self.state = 'CONTINUING'` code that was never read
+  - HIGH: Added tests for recoverable error continuation and no-event emission
+  - MEDIUM: Fixed nonsensical `getattr(ErrorSeverity, 'ProviderTimeoutError')` → direct enum values
+  - MEDIUM: Recoverable errors now log at WARNING level instead of ERROR
+  - MEDIUM: Added `suggested_action` field to ErrorOccurred event and all emissions
 
 ### File List
+- src/bmad_orch/exceptions.py
+- src/bmad_orch/engine/cycle.py
+- src/bmad_orch/engine/events.py
+- tests/test_error_classification.py

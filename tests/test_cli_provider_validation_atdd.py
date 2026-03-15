@@ -11,15 +11,15 @@ Acceptance Criteria:
 """
 
 import time
-from typing import Any, AsyncIterator
-from unittest.mock import patch
+from collections.abc import AsyncIterator
+from typing import Any
 
 import pytest
 import yaml
 from typer.testing import CliRunner
 
 from bmad_orch.cli import app
-from bmad_orch.providers import register_adapter, clear_registry
+from bmad_orch.providers import clear_registry, register_adapter
 from bmad_orch.providers.base import ProviderAdapter
 from bmad_orch.types import OutputChunk
 

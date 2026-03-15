@@ -1,29 +1,39 @@
 from rich.console import Console
-from rich.table import Table
 from rich.panel import Panel
+from rich.table import Table
 from rich.text import Text
 
 from bmad_orch.config.schema import OrchestratorConfig
-from bmad_orch.types import StepType
 from bmad_orch.rendering import styles
+from bmad_orch.types import StepType
+
 
 def render_playbook_summary(config: OrchestratorConfig, dry_run: bool = False) -> None:
     """Render a summary of the execution plan (playbook) to the console."""
     console = Console()
 
-    title_text = "[bold magenta]DRY RUN: PLAYBOOK EXECUTION PLAN[/bold magenta]" if dry_run else "[bold cyan]PRE-FLIGHT SUMMARY[/bold cyan]"
+    title_text = (
+        "[bold magenta]DRY RUN: PLAYBOOK EXECUTION PLAN[/bold magenta]"
+        if dry_run else "[bold cyan]PRE-FLIGHT SUMMARY[/bold cyan]"
+    )
     
     # Header panel
     console.print()
     console.print(Panel(
-        Text.from_markup(f"Project: [bold white]bmad-orch[/bold white]\nCycles: [bold white]{len(config.cycles)}[/bold white]"),
+        Text.from_markup(
+            f"Project: [bold white]bmad-orch[/bold white]\n"
+            f"Cycles: [bold white]{len(config.cycles)}[/bold white]"
+        ),
         title=title_text,
         expand=False,
         border_style="magenta" if dry_run else "cyan"
     ))
 
     # Providers table
-    provider_table = Table(title="[bold yellow]Providers Registry[/bold yellow]", header_style=styles.TABLE_HEADER, box=None)
+    provider_table = Table(
+        title="[bold yellow]Providers Registry[/bold yellow]",
+        header_style=styles.TABLE_HEADER, box=None,
+    )
     provider_table.add_column("ID", justify="right", style=styles.PROVIDER_ID)
     provider_table.add_column("Name", style="white")
     provider_table.add_column("Model", style="blue")

@@ -18,7 +18,7 @@ class EventEmitter:
         """
         Subscribe a callback to an event type. Idempotent (via identity check).
         """
-        if not isinstance(event_type, type) or not issubclass(event_type, BaseEvent):
+        if not isinstance(event_type, type) or not issubclass(event_type, BaseEvent):  # pyright: ignore[reportUnnecessaryIsInstance]
             raise TypeError(f"event_type must be BaseEvent or a subclass of BaseEvent, got {event_type}")
         
         # AC3: Identity check 'is' for idempotency
@@ -55,7 +55,7 @@ class EventEmitter:
         Type-specific subscribers first (registration order), then BaseEvent catch-all subscribers (registration order).
         Each unique callback is notified only once per emission.
         """
-        if not isinstance(event, BaseEvent):
+        if not isinstance(event, BaseEvent):  # pyright: ignore[reportUnnecessaryIsInstance]
             raise TypeError(f"event must be an instance of BaseEvent, got {type(event)}")
 
         event_type = type(event)

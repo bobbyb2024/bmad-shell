@@ -53,15 +53,15 @@ development_status:
   2-2-claude-cli-adapter: done
   2-3-gemini-cli-adapter: done
   2-4-single-provider-graceful-mode: done
-  epic-2-retrospective: optional
+  epic-2-retrospective: done
   epic-3: in-progress
   3-1-event-emitter-event-types: done
   3-2-state-manager-atomic-persistence: done
   3-3-structured-logging-subsystem: done
   3-4-cycle-execution-engine: done
-  3-5-error-detection-classification: ready-for-dev
-  3-6-multi-cycle-workflow-orchestration: backlog
-  epic-3-retrospective: optional
+  3-5-error-detection-classification: done
+  3-6-multi-cycle-workflow-orchestration: done
+  epic-3-retrospective: done
   epic-4: backlog
   4-1-git-integration-configurable-commits: backlog
   4-2-emergency-error-flow-impactful-error-handling: backlog

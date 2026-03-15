@@ -6,8 +6,8 @@ import shutil
 import subprocess
 import time
 from collections.abc import AsyncIterator
-from typing import Any
 from dataclasses import replace
+from typing import Any, cast
 
 from bmad_orch.exceptions import ProviderCrashError, ProviderError, ProviderTimeoutError, ProviderTransientError
 from bmad_orch.providers.base import ProviderAdapter
@@ -23,7 +23,7 @@ class GeminiAdapter(ProviderAdapter):
     _cli_path: str | None = None
     _cli_version: str = "Version Unknown"
 
-    def __init__(self, **config: Any) -> None:
+    def __init__(self, **config: Any) -> None:  # noqa: ANN401
         self.config = config
         # Regex for AC7: Corrupted/Provider Error
         self._corruption_patterns = [
@@ -56,9 +56,12 @@ class GeminiAdapter(ProviderAdapter):
             try:
                 # Attempt to discover models via CLI
                 output = subprocess.check_output([path, "models", "list", "--json"], stderr=subprocess.STDOUT)  # noqa: S603
-                models = json.loads(output)
-                if isinstance(models, list) and len(models) > 0 and all(isinstance(m, dict) and "id" in m for m in models):
-                    return models
+                parsed: Any = json.loads(output)
+                models = cast(list[Any], parsed)
+                if isinstance(parsed, list) and len(models) > 0 and all(
+                    isinstance(m, dict) and "id" in m for m in models
+                ):
+                    return cast(list[dict[str, Any]], parsed)
             except subprocess.CalledProcessError as e:
                 # AC2: If subcommand is missing or unavailable, fallback.
                 # Usually, exit code 127 or 1 with specific error message indicates missing subcommand.
@@ -73,13 +76,13 @@ class GeminiAdapter(ProviderAdapter):
                 raise ProviderError(f"Gemini CLI execution failed: {e}") from e
 
         # Fallback list as mandated by AC2. Configurable via adapter config.
-        fallback = self.config.get("default_models") or [
+        fallback: list[dict[str, Any]] = self.config.get("default_models") or [
             {"id": "gemini-1.5-flash", "name": "Gemini 1.5 Flash"},
             {"id": "gemini-1.5-pro", "name": "Gemini 1.5 Pro"}
         ]
         return fallback
 
-    async def _execute(self, prompt: str, **kwargs: Any) -> AsyncIterator[OutputChunk]:
+    async def _execute(self, prompt: str, **kwargs: Any) -> AsyncIterator[OutputChunk]:  # noqa: ANN401
         """Implementation of prompt execution via spawn_pty_process. AC3-8."""
         model = kwargs.get("model") or self.config.get("model") or "gemini-1.5-flash"
         

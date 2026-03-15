@@ -1,17 +1,16 @@
-import pytest
-import asyncio
-from unittest.mock import MagicMock, AsyncMock, patch, call
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
+from unittest.mock import AsyncMock, MagicMock, call, patch
 
+import pytest
+
+from bmad_orch.config.schema import CycleConfig, OrchestratorConfig, StepConfig
 from bmad_orch.engine.cycle import CycleExecutor
-from bmad_orch.config.schema import CycleConfig, StepConfig, OrchestratorConfig
-from bmad_orch.state.schema import RunState, CycleRecord, StepRecord
-from bmad_orch.types import StepType, StepOutcome
-from bmad_orch.engine.events import (
-    CycleStarted, CycleCompleted, StepStarted, StepCompleted, ErrorOccurred
-)
+from bmad_orch.engine.events import CycleCompleted, CycleStarted, ErrorOccurred, StepCompleted, StepStarted
 from bmad_orch.exceptions import ConfigError
+from bmad_orch.state.schema import CycleRecord, RunState
+from bmad_orch.types import StepType
+
 
 @pytest.fixture
 def mock_emitter():
@@ -22,7 +21,7 @@ def mock_state_manager():
     sm = MagicMock()
     # Mock state updates properly
     def mock_start_cycle(state, cycle_id, started_at=None):
-        new_cycle = CycleRecord(cycle_id=cycle_id, started_at=started_at or datetime.now(timezone.utc))
+        new_cycle = CycleRecord(cycle_id=cycle_id, started_at=started_at or datetime.now(UTC))
         return state.model_copy(update={"run_history": list(state.run_history) + [new_cycle]})
     
     def mock_record_step(state, cycle_id, step_record):
@@ -38,7 +37,9 @@ def mock_state_manager():
         new_history = []
         for cycle in state.run_history:
             if cycle.cycle_id == cycle_id:
-                new_history.append(cycle.model_copy(update={"outcome": outcome, "finished_at": finished_at or datetime.now(timezone.utc)}))
+                new_history.append(cycle.model_copy(update={
+            "outcome": outcome, "finished_at": finished_at or datetime.now(UTC),
+        }))
             else:
                 new_history.append(cycle)
         return state.model_copy(update={"run_history": new_history})
@@ -78,7 +79,7 @@ def initial_state():
 @pytest.mark.asyncio
 async def test_execute_cycle_basic(mock_emitter, mock_state_manager, mock_resolver, config, initial_state):
     executor = CycleExecutor(mock_emitter, mock_state_manager, mock_resolver, config, Path("state.json"))
-    executor._execute_step = AsyncMock(return_value=(True, "OK"))
+    executor._execute_step = AsyncMock(return_value=(True, "OK", False))
     
     cycle_config = config.cycles["test-cycle"]
     final_state = await executor.execute_cycle("test-cycle", cycle_config, initial_state, {"var": "val"})
@@ -106,7 +107,7 @@ async def test_execute_cycle_step_type_logic(mock_emitter, mock_state_manager, m
     )
     
     executor = CycleExecutor(mock_emitter, mock_state_manager, mock_resolver, config, Path("state.json"))
-    executor._execute_step = AsyncMock(return_value=(True, "OK"))
+    executor._execute_step = AsyncMock(return_value=(True, "OK", False))
     
     final_state = await executor.execute_cycle("test-cycle", config.cycles["test-cycle"], initial_state, {})
     
@@ -132,7 +133,7 @@ async def test_execute_cycle_pauses(mock_sleep, mock_emitter, mock_state_manager
     )
     
     executor = CycleExecutor(mock_emitter, mock_state_manager, mock_resolver, config, Path("state.json"))
-    executor._execute_step = AsyncMock(return_value=(True, "OK"))
+    executor._execute_step = AsyncMock(return_value=(True, "OK", False))
     
     await executor.execute_cycle("test-cycle", config.cycles["test-cycle"], initial_state, {})
     
@@ -147,7 +148,7 @@ async def test_execute_cycle_pauses(mock_sleep, mock_emitter, mock_state_manager
 async def test_execute_cycle_step_failure(mock_emitter, mock_state_manager, mock_resolver, config, initial_state):
     executor = CycleExecutor(mock_emitter, mock_state_manager, mock_resolver, config, Path("state.json"))
     # Mock failure
-    executor._execute_step = AsyncMock(return_value=(False, "Failed"))
+    executor._execute_step = AsyncMock(return_value=(False, "Failed", False))
 
     final_state = await executor.execute_cycle("test-cycle", config.cycles["test-cycle"], initial_state, {})
 
@@ -177,9 +178,11 @@ async def test_execute_cycle_template_failure(mock_emitter, mock_state_manager, 
 @pytest.mark.asyncio
 @patch("bmad_orch.engine.cycle.unbind_contextvars")
 @patch("bmad_orch.engine.cycle.bind_contextvars")
-async def test_execute_cycle_logging_context(mock_bind, mock_unbind, mock_emitter, mock_state_manager, mock_resolver, config, initial_state):
+async def test_execute_cycle_logging_context(
+    mock_bind, mock_unbind, mock_emitter, mock_state_manager, mock_resolver, config, initial_state,
+):
     executor = CycleExecutor(mock_emitter, mock_state_manager, mock_resolver, config, Path("state.json"))
-    executor._execute_step = AsyncMock(return_value=(True, "OK"))
+    executor._execute_step = AsyncMock(return_value=(True, "OK", False))
     
     await executor.execute_cycle("test-cycle", config.cycles["test-cycle"], initial_state, {})
     
@@ -237,7 +240,9 @@ async def test_execute_cycle_repeat_zero(mock_emitter, mock_state_manager, mock_
 
 
 @pytest.mark.asyncio
-async def test_execute_cycle_generative_only_repeat_gt1(mock_emitter, mock_state_manager, mock_resolver, config, initial_state):
+async def test_execute_cycle_generative_only_repeat_gt1(
+    mock_emitter, mock_state_manager, mock_resolver, config, initial_state,
+):
     """AC11: Generative-only steps with repeat > 1 must emit ErrorOccurred upfront."""
     config.cycles["test-cycle"] = CycleConfig(
         steps=[
@@ -247,7 +252,7 @@ async def test_execute_cycle_generative_only_repeat_gt1(mock_emitter, mock_state
     )
 
     executor = CycleExecutor(mock_emitter, mock_state_manager, mock_resolver, config, Path("state.json"))
-    executor._execute_step = AsyncMock(return_value=(True, "OK"))
+    executor._execute_step = AsyncMock(return_value=(True, "OK", False))
 
     final_state = await executor.execute_cycle("test-cycle", config.cycles["test-cycle"], initial_state, {})
 
@@ -298,11 +303,13 @@ async def test_execute_cycle_invalid_provider(mock_emitter, mock_state_manager, 
 
 
 @pytest.mark.asyncio
-async def test_execute_cycle_escalation_detection(mock_emitter, mock_state_manager, mock_resolver, config, initial_state):
+async def test_execute_cycle_escalation_detection(
+    mock_emitter, mock_state_manager, mock_resolver, config, initial_state,
+):
     """AC6: Detect escalation trigger and emit event."""
     from bmad_orch.engine.events import EscalationChanged, EscalationLevel
     executor = CycleExecutor(mock_emitter, mock_state_manager, mock_resolver, config, Path("state.json"))
-    executor._execute_step = AsyncMock(return_value=(True, "Some output with ESCALATE: ATTENTION included"))
+    executor._execute_step = AsyncMock(return_value=(True, "Some output with ESCALATE: ATTENTION included", False))
 
     await executor.execute_cycle("test-cycle", config.cycles["test-cycle"], initial_state, {})
 
@@ -350,7 +357,9 @@ async def test_execute_cycle_provider_missing_name(mock_emitter, mock_state_mana
 
 
 @pytest.mark.asyncio
-async def test_execute_cycle_template_failure_populates_error_record(mock_emitter, mock_state_manager, mock_resolver, config, initial_state):
+async def test_execute_cycle_template_failure_populates_error_record(
+    mock_emitter, mock_state_manager, mock_resolver, config, initial_state,
+):
     """AC8: Template resolution failure must record ErrorRecord in StepRecord."""
     mock_resolver.resolve.side_effect = ConfigError("Missing var {foo}")
     executor = CycleExecutor(mock_emitter, mock_state_manager, mock_resolver, config, Path("state.json"))
@@ -386,7 +395,7 @@ async def test_cycle_completed_uses_first_provider_name(mock_emitter, mock_state
     )
 
     executor = CycleExecutor(mock_emitter, mock_state_manager, mock_resolver, multi_provider_config, Path("state.json"))
-    executor._execute_step = AsyncMock(return_value=(True, "OK"))
+    executor._execute_step = AsyncMock(return_value=(True, "OK", False))
 
     await executor.execute_cycle("multi", multi_provider_config.cycles["multi"], initial_state, {})
 
@@ -398,10 +407,12 @@ async def test_cycle_completed_uses_first_provider_name(mock_emitter, mock_state
 
 
 @pytest.mark.asyncio
-async def test_record_step_return_value_captured(mock_emitter, mock_state_manager, mock_resolver, config, initial_state):
+async def test_record_step_return_value_captured(
+    mock_emitter, mock_state_manager, mock_resolver, config, initial_state,
+):
     """Task 5.8: Verify record_step return value is captured (state not stale)."""
     executor = CycleExecutor(mock_emitter, mock_state_manager, mock_resolver, config, Path("state.json"))
-    executor._execute_step = AsyncMock(return_value=(True, "OK"))
+    executor._execute_step = AsyncMock(return_value=(True, "OK", False))
 
     final_state = await executor.execute_cycle("test-cycle", config.cycles["test-cycle"], initial_state, {})
 

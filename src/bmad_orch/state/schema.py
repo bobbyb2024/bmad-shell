@@ -1,6 +1,7 @@
 from datetime import datetime
-from typing import List, Optional
-from pydantic import BaseModel, Field, ConfigDict
+
+from pydantic import BaseModel, ConfigDict, Field
+
 from bmad_orch.types import StepOutcome
 
 
@@ -10,7 +11,7 @@ class ErrorRecord(BaseModel):
 
     message: str
     error_type: str
-    traceback: Optional[str] = None
+    traceback: str | None = None
 
 
 class StepRecord(BaseModel):
@@ -21,7 +22,7 @@ class StepRecord(BaseModel):
     provider_name: str
     outcome: StepOutcome
     timestamp: datetime
-    error: Optional[ErrorRecord] = None
+    error: ErrorRecord | None = None
 
 
 class CycleRecord(BaseModel):
@@ -29,10 +30,10 @@ class CycleRecord(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     cycle_id: str
-    steps: List[StepRecord] = Field(default_factory=list)
+    steps: list[StepRecord] = []
     started_at: datetime
-    finished_at: Optional[datetime] = None
-    outcome: Optional[StepOutcome] = None
+    finished_at: datetime | None = None
+    outcome: StepOutcome | None = None
 
 
 class RunState(BaseModel):
@@ -41,5 +42,9 @@ class RunState(BaseModel):
 
     run_id: str
     schema_version: int = 1
-    run_history: List[CycleRecord] = Field(default_factory=list)
-    config_hash: Optional[str] = Field(default=None, description="MD5 hash of the normalized config file")
+    run_history: list[CycleRecord] = []
+    config_hash: str | None = None
+    template_context: dict[str, str] = Field(
+        default_factory=lambda: {},
+        description="Cumulative context from completed cycles",
+    )
