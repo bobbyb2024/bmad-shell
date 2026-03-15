@@ -80,6 +80,35 @@ class ErrorConfig(BaseModel):
     retry_delay: float = Field(default=10.0, ge=0)
 
 
+class ResourceConfig(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    polling_interval: float = Field(default=1.0)
+    cpu_threshold: float = Field(default=80.0)
+    memory_threshold: float = Field(default=80.0)
+
+    @field_validator("polling_interval")
+    @classmethod
+    def validate_polling_interval(cls, v: float) -> float:
+        if v <= 0:
+            raise ValueError("polling_interval must be > 0")
+        return v
+
+    @field_validator("memory_threshold")
+    @classmethod
+    def validate_memory_threshold(cls, v: float) -> float:
+        if not (0.0 < v < 100.0):
+            raise ValueError("memory_threshold must be between 0.0 and 100.0 (exclusive)")
+        return v
+
+    @field_validator("cpu_threshold")
+    @classmethod
+    def validate_cpu_threshold(cls, v: float) -> float:
+        if v <= 0.0:
+            raise ValueError("cpu_threshold must be > 0.0")
+        return v
+
+
 class OrchestratorConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -88,6 +117,7 @@ class OrchestratorConfig(BaseModel):
     git: GitConfig
     pauses: PauseConfig
     error_handling: ErrorConfig
+    resources: ResourceConfig = Field(default_factory=ResourceConfig)
 
     @model_validator(mode="after")
     def validate_structure(self) -> "OrchestratorConfig":

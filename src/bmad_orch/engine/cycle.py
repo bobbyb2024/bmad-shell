@@ -48,6 +48,16 @@ class CycleExecutor:
         self.adapter_factory = adapter_factory
         self.git_client = git_client
         self._running_processes: set[asyncio.subprocess.Process] = set()
+        self._intentional_kills: set[int] = set()
+
+    @property
+    def running_pids(self) -> list[int]:
+        """Returns the PIDs of all currently running subprocesses."""
+        return [p.pid for p in self._running_processes if p.pid is not None]
+
+    def mark_intentional_kill(self, pid: int) -> None:
+        """Marks a PID as being intentionally killed (e.g., by ResourceMonitor)."""
+        self._intentional_kills.add(pid)
 
     async def cleanup_processes(self) -> None:
         """Kills all tracked subprocesses and awaits them."""
@@ -61,6 +71,8 @@ class CycleExecutor:
     async def _do_cleanup(self) -> None:
         for process in list(self._running_processes):
             try:
+                if process.pid:
+                    self.mark_intentional_kill(process.pid)
                 process.kill()
             except OSError:
                 pass # Already dead
@@ -83,12 +95,26 @@ class CycleExecutor:
 
     async def handle_error_async(self, error: Exception, process: 'asyncio.subprocess.Process | None' = None) -> None:
         classification = classify_error(error)
+        
+        # If the process was intentionally killed, we suppress the normal error flow
+        # to prevent duplicate error reporting (e.g., from ResourceMonitor).
+        if process and process.pid in self._intentional_kills:
+            try:
+                await process.wait()
+            except OSError:
+                pass
+            self._running_processes.discard(process)
+            return
+
         if process:
             try:
+                if process.pid:
+                    self.mark_intentional_kill(process.pid)
                 process.kill()
             except OSError:
                 pass
             await process.wait()
+            self._running_processes.discard(process)
 
         if not classification.is_recoverable:
             self.log_error(error, "Check provider configuration and logs")

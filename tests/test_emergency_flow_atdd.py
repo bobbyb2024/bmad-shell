@@ -298,8 +298,8 @@ class TestEmergencyFlowOrder:
 
     
     @pytest.mark.asyncio
-    async @pytest.mark.skip(reason=SKIP_REASON)
-    def test_emergency_flow_triggers_on_impactful_error(self):
+    @pytest.mark.skip(reason=SKIP_REASON)
+    async def test_emergency_flow_triggers_on_impactful_error(self):
         """AC1: Provider crash triggers the emergency flow."""
         from bmad_orch.engine.runner import Runner
 
@@ -315,8 +315,8 @@ class TestEmergencyFlowOrder:
 
     
     @pytest.mark.asyncio
-    async @pytest.mark.skip(reason=SKIP_REASON)
-    def test_emergency_flow_order_save_commit_push_halt(self):
+    @pytest.mark.skip(reason=SKIP_REASON)
+    async def test_emergency_flow_order_save_commit_push_halt(self):
         """AC1: Verify exact order: save state → git commit → git push → halt."""
         from bmad_orch.engine.runner import Runner
 
@@ -337,8 +337,8 @@ class TestEmergencyFlowOrder:
 
     
     @pytest.mark.asyncio
-    async @pytest.mark.skip(reason=SKIP_REASON)
-    def test_git_error_trigger_skips_git_operations(self):
+    @pytest.mark.skip(reason=SKIP_REASON)
+    async def test_git_error_trigger_skips_git_operations(self):
         """AC1: GitError as triggering error skips git commit/push (no recursion)."""
         from bmad_orch.engine.runner import Runner
 
@@ -361,8 +361,8 @@ class TestEmergencyFlowOrder:
 
     
     @pytest.mark.asyncio
-    async @pytest.mark.skip(reason=SKIP_REASON)
-    def test_emergency_flow_guard_git_client_none(self):
+    @pytest.mark.skip(reason=SKIP_REASON)
+    async def test_emergency_flow_guard_git_client_none(self):
         """AC1: If git_client is None (early crash), skip git operations gracefully."""
         from bmad_orch.engine.runner import Runner
 
@@ -381,8 +381,8 @@ class TestSecondaryGitFailure:
 
     
     @pytest.mark.asyncio
-    async @pytest.mark.skip(reason=SKIP_REASON)
-    def test_git_add_failure_skips_commit_and_push(self):
+    @pytest.mark.skip(reason=SKIP_REASON)
+    async def test_git_add_failure_skips_commit_and_push(self):
         """AC2: If git add fails, skip commit and push."""
         from bmad_orch.engine.runner import Runner
 
@@ -402,8 +402,8 @@ class TestSecondaryGitFailure:
 
     
     @pytest.mark.asyncio
-    async @pytest.mark.skip(reason=SKIP_REASON)
-    def test_push_failure_logs_error_with_traceback(self):
+    @pytest.mark.skip(reason=SKIP_REASON)
+    async def test_push_failure_logs_error_with_traceback(self):
         """AC2: Push failure logs ERROR with traceback."""
         from bmad_orch.engine.runner import Runner
 
@@ -428,8 +428,8 @@ class TestSecondaryGitFailure:
 
     
     @pytest.mark.asyncio
-    async @pytest.mark.skip(reason=SKIP_REASON)
-    def test_non_git_halt_sequence_always_completes(self):
+    @pytest.mark.skip(reason=SKIP_REASON)
+    async def test_non_git_halt_sequence_always_completes(self):
         """AC2: State save, subprocess cleanup, exit run regardless of git failures."""
         from bmad_orch.engine.runner import Runner
 
@@ -461,8 +461,8 @@ class TestEmergencyFlowReentrance:
 
     
     @pytest.mark.asyncio
-    async @pytest.mark.skip(reason=SKIP_REASON)
-    def test_in_emergency_flow_flag_prevents_reentrance(self):
+    @pytest.mark.skip(reason=SKIP_REASON)
+    async def test_in_emergency_flow_flag_prevents_reentrance(self):
         """_in_emergency_flow flag prevents recursive emergency handling."""
         from bmad_orch.engine.runner import Runner
 
@@ -479,8 +479,8 @@ class TestEmergencyFlowReentrance:
 
     
     @pytest.mark.asyncio
-    async @pytest.mark.skip(reason=SKIP_REASON)
-    def test_in_emergency_flow_flag_reset_on_exit(self):
+    @pytest.mark.skip(reason=SKIP_REASON)
+    async def test_in_emergency_flow_flag_reset_on_exit(self):
         """_in_emergency_flow reset to False via try/finally."""
         from bmad_orch.engine.runner import Runner
 
@@ -505,8 +505,8 @@ class TestSubprocessCleanup:
 
     
     @pytest.mark.asyncio
-    async @pytest.mark.skip(reason=SKIP_REASON)
-    def test_subprocess_killed_and_waited_during_emergency(self):
+    @pytest.mark.skip(reason=SKIP_REASON)
+    async def test_subprocess_killed_and_waited_during_emergency(self):
         """Subprocesses are killed via process.kill() + await process.wait()."""
         from bmad_orch.engine.runner import Runner
 
@@ -531,8 +531,8 @@ class TestSubprocessCleanup:
 
     
     @pytest.mark.asyncio
-    async @pytest.mark.skip(reason=SKIP_REASON)
-    def test_subprocess_cleanup_shielded_from_cancellation(self):
+    @pytest.mark.skip(reason=SKIP_REASON)
+    async def test_subprocess_cleanup_shielded_from_cancellation(self):
         """Subprocess cleanup wrapped in asyncio.shield() to prevent zombies."""
         from bmad_orch.engine.runner import Runner
 
@@ -699,8 +699,8 @@ class TestSignalHandling:
 
     
     @pytest.mark.asyncio
-    async @pytest.mark.skip(reason=SKIP_REASON)
-    def test_sigint_triggers_emergency_flow_with_halted_status(self):
+    @pytest.mark.skip(reason=SKIP_REASON)
+    async def test_sigint_triggers_emergency_flow_with_halted_status(self):
         """AC6: SIGINT → emergency flow → status=HALTED, not FAILED."""
         from bmad_orch.engine.runner import Runner
         from bmad_orch.types import RunStatus
@@ -720,8 +720,8 @@ class TestSignalHandling:
 
     
     @pytest.mark.asyncio
-    async @pytest.mark.skip(reason=SKIP_REASON)
-    def test_sigint_commits_and_pushes(self):
+    @pytest.mark.skip(reason=SKIP_REASON)
+    async def test_sigint_commits_and_pushes(self):
         """AC6: User abort still commits state + pushes."""
         from bmad_orch.engine.runner import Runner
 
@@ -741,8 +741,8 @@ class TestSignalHandling:
 
     
     @pytest.mark.asyncio
-    async @pytest.mark.skip(reason=SKIP_REASON)
-    def test_emergency_flow_suppresses_reentrant_interrupt(self):
+    @pytest.mark.skip(reason=SKIP_REASON)
+    async def test_emergency_flow_suppresses_reentrant_interrupt(self):
         """AC6: If _in_emergency_flow is True, suppress the interrupt."""
         from bmad_orch.engine.runner import Runner
 
@@ -767,8 +767,8 @@ class TestPartialEmergencyCompletion:
 
     
     @pytest.mark.asyncio
-    async @pytest.mark.skip(reason=SKIP_REASON)
-    def test_partial_completion_state_valid(self):
+    @pytest.mark.skip(reason=SKIP_REASON)
+    async def test_partial_completion_state_valid(self):
         """State saved + committed but push failed → valid halt state."""
         from bmad_orch.engine.runner import Runner
         from bmad_orch.types import RunStatus
@@ -796,8 +796,8 @@ class TestPartialEmergencyCompletion:
 
     
     @pytest.mark.asyncio
-    async @pytest.mark.skip(reason=SKIP_REASON)
-    def test_git_error_during_emergency_logged_with_traceback(self):
+    @pytest.mark.skip(reason=SKIP_REASON)
+    async def test_git_error_during_emergency_logged_with_traceback(self):
         """GitError during emergency flow logged at ERROR with traceback."""
         from bmad_orch.engine.runner import Runner
 
@@ -827,8 +827,8 @@ class TestEmergencyGitCommitMessage:
 
     
     @pytest.mark.asyncio
-    async @pytest.mark.skip(reason=SKIP_REASON)
-    def test_emergency_commit_message_format(self):
+    @pytest.mark.skip(reason=SKIP_REASON)
+    async def test_emergency_commit_message_format(self):
         """Commit message includes failure_point and error_type."""
         from bmad_orch.engine.runner import Runner
 

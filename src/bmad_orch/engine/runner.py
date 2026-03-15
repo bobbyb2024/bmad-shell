@@ -134,39 +134,75 @@ class Runner:
         )
         self._executor = executor
 
+        from bmad_orch.engine.resources import ResourceMonitor
+        monitor = ResourceMonitor(self.config.resources, self.emitter)
+        await monitor.start(executor)
+
         cycle_keys = list(self.config.cycles.keys())
         run_success = True
 
-        for i, cycle_id in enumerate(cycle_keys):
-            cycle_config = self.config.cycles[cycle_id]
-            
-            # AC7: Crash-resumption
-            if self.state.run_history:
-                success_reps = sum(
-                    1 for r in self.state.run_history 
-                    if r.cycle_id.startswith(f"{cycle_id}:") and r.outcome == StepOutcome("success")
+        try:
+            for i, cycle_id in enumerate(cycle_keys):
+                cycle_config = self.config.cycles[cycle_id]
+                
+                # AC7: Crash-resumption
+                if self.state.run_history:
+                    success_reps = sum(
+                        1 for r in self.state.run_history 
+                        if r.cycle_id.startswith(f"{cycle_id}:") and r.outcome == StepOutcome("success")
+                    )
+                    if success_reps == cycle_config.repeat:
+                        logger.info(f"Skipping completed cycle type {cycle_id}")
+                        continue
+                        
+                # Wrap execute_cycle in a task so we can wait for it along with the monitor
+                cycle_task = asyncio.create_task(executor.execute_cycle(
+                    cycle_id, 
+                    cycle_config, 
+                    self.state, 
+                    self.state.template_context
+                ))
+                
+                # If monitor is active, wait for either to finish
+                tasks_to_wait = {cycle_task}
+                if monitor._task:
+                    tasks_to_wait.add(monitor._task)
+                
+                done, pending = await asyncio.wait(
+                    tasks_to_wait,
+                    return_when=asyncio.FIRST_COMPLETED
                 )
-                if success_reps == cycle_config.repeat:
-                    logger.info(f"Skipping completed cycle type {cycle_id}")
-                    continue
+                
+                if cycle_task in done:
+                    self.state = await cycle_task
+                else:
+                    # Monitor task must have failed (it's a loop)
+                    # We cancel the cycle task and raise the monitor error
+                    cycle_task.cancel()
+                    try:
+                        await cycle_task
+                    except asyncio.CancelledError:
+                        pass
                     
-            self.state = await executor.execute_cycle(
-                cycle_id, 
-                cycle_config, 
-                self.state, 
-                self.state.template_context
-            )
-            
-            if self.state.run_history:
-                last_cycle = self.state.run_history[-1]
-                if last_cycle.outcome == StepOutcome("failure"):
-                    logger.error(f"Cycle type {cycle_id} failed. Aborting remaining cycle types.")
-                    run_success = False
-                    break
-            
-            # AC2: pause_between_cycle_types
-            if i < len(cycle_keys) - 1 and self.config.pauses.between_cycle_types > 0:
-                await asyncio.sleep(self.config.pauses.between_cycle_types)
+                    if monitor._task in done:
+                        exc = monitor._task.exception()
+                        if exc:
+                            raise exc
+                        else:
+                            raise RuntimeError("ResourceMonitor task finished unexpectedly")
+
+                if self.state.run_history:
+                    last_cycle = self.state.run_history[-1]
+                    if last_cycle.outcome == StepOutcome("failure"):
+                        logger.error(f"Cycle type {cycle_id} failed. Aborting remaining cycle types.")
+                        run_success = False
+                        break
+                
+                # AC2: pause_between_cycle_types
+                if i < len(cycle_keys) - 1 and self.config.pauses.between_cycle_types > 0:
+                    await asyncio.sleep(self.config.pauses.between_cycle_types)
+        finally:
+            await monitor.stop()
                 
         # AC6: Emit RunCompleted
         self._emit_run_completed(start_time, run_success)
