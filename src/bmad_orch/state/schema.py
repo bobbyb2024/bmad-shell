@@ -44,6 +44,7 @@ class CycleRecord(BaseModel):
     started_at: datetime
     finished_at: datetime | None = None
     outcome: StepOutcome | None = None
+    context_snapshot: dict[str, str] | None = None
 
 
 class RunState(BaseModel):

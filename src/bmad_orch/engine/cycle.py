@@ -172,6 +172,7 @@ class CycleExecutor:
         cycle_config: CycleConfig,
         state: RunState,
         template_context: Mapping[str, str],
+        start_step_index: int = 0,
     ) -> RunState:
         bind_contextvars(cycle_id=cycle_id)
         try:
@@ -234,24 +235,33 @@ class CycleExecutor:
             # AC6: provider_name for CycleStarted/CycleCompleted is always from first step
             first_provider_name = self.config.providers[cycle_config.steps[0].provider].name
 
+            # Snapshot taken for the cycle
+            current_start_step = start_step_index
+
             for cycle_idx in range(cycle_config.repeat):
                 cycle_num = cycle_idx + 1
                 rep_id = f"{cycle_id}:{cycle_num}"
 
                 # AC7: Skip already successful repetition
                 already_success = any(
-                    r.cycle_id == rep_id and r.outcome == StepOutcome("success")
+                    r.cycle_id == rep_id and r.outcome == StepOutcome.SUCCESS
                     for r in state.run_history
                 )
                 if already_success:
                     logger.info(f"Skipping already successful cycle repetition {rep_id}")
                     continue
 
-                state = self.state_manager.start_cycle(state, rep_id)
+                state = self.state_manager.start_cycle(
+                    state, rep_id, context_snapshot=dict(template_context)
+                )
                 self.emitter.emit(CycleStarted(cycle_number=cycle_num, provider_name=first_provider_name))
 
                 # Step loop
                 for step_idx, step in enumerate(cycle_config.steps):
+                    # Resume logic: skip steps before start_step_index on the first repetition that runs
+                    if step_idx < current_start_step:
+                        continue
+
                     # AC2: Step Type Logic
                     if cycle_idx > 0 and step.type == StepType.GENERATIVE:
                         continue
@@ -265,8 +275,9 @@ class CycleExecutor:
 
                         # AC8: Prompt Resolution
                         try:
+                            # Use state.template_context as it is updated during the cycle
                             resolved_prompt = self.prompt_resolver.resolve(
-                                step.prompt, template_context
+                                step.prompt, state.template_context
                             )
                         except Exception as e:
                             self.emitter.emit(ErrorOccurred(
@@ -313,7 +324,7 @@ class CycleExecutor:
                             ))
 
                         # AC7, AC10: Record & Persist
-                        outcome = StepOutcome("success") if success else StepOutcome("failure")
+                        outcome = StepOutcome.SUCCESS if success else StepOutcome.FAILURE
                         step_record = StepRecord(
                             step_id=step_name,
                             provider_name=provider_name,
@@ -339,7 +350,7 @@ class CycleExecutor:
                                 recoverable=False,
                                 suggested_action="Check provider configuration and logs",
                             ))
-                            state = self.state_manager.finish_cycle(state, rep_id, StepOutcome("failure"))
+                            state = self.state_manager.finish_cycle(state, rep_id, StepOutcome.FAILURE)
                             self.state_manager.save(state, self.state_path)
                             self.emitter.emit(CycleCompleted(
                                 cycle_number=cycle_num, provider_name=first_provider_name, success=False,
@@ -365,8 +376,11 @@ class CycleExecutor:
                     finally:
                         unbind_contextvars("step_name", "provider_name")
 
+                # After the first repetition that runs, reset start_step_index for subsequent reps
+                current_start_step = 0
+
                 # AC6: CycleCompleted
-                state = self.state_manager.finish_cycle(state, rep_id, StepOutcome("success"))
+                state = self.state_manager.finish_cycle(state, rep_id, StepOutcome.SUCCESS)
                 self.state_manager.save(state, self.state_path)
                 self.emitter.emit(CycleCompleted(
                     cycle_number=cycle_num, provider_name=first_provider_name, success=True,
@@ -441,11 +455,11 @@ class CycleExecutor:
         step_record = StepRecord(
             step_id=step_id,
             provider_name=provider_name,
-            outcome=StepOutcome("failure"),
+            outcome=StepOutcome.FAILURE,
             timestamp=datetime.now(UTC),
             error=ErrorRecord(message=message, error_type="ConfigError"),
         )
         state = self.state_manager.record_step(state, rep_id, step_record)
-        state = self.state_manager.finish_cycle(state, rep_id, StepOutcome("failure"))
+        state = self.state_manager.finish_cycle(state, rep_id, StepOutcome.FAILURE)
         self.state_manager.save(state, self.state_path)
         return state

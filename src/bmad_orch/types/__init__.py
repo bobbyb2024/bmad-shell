@@ -1,9 +1,14 @@
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import Enum, StrEnum
 from typing import Any, NewType
 
 ProviderName = NewType("ProviderName", str)
-StepOutcome = NewType("StepOutcome", str)
+
+
+class StepOutcome(StrEnum):
+    SUCCESS = "success"
+    FAILURE = "failure"
+    SKIPPED = "skipped"
 
 
 class ErrorSeverity(Enum):

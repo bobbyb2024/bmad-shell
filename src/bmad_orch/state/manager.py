@@ -150,10 +150,19 @@ class StateManager:
         return state.model_copy(update={"run_history": new_history})
 
     @staticmethod
-    def start_cycle(state: RunState, cycle_id: str, started_at: datetime | None = None) -> RunState:
+    def start_cycle(
+        state: RunState,
+        cycle_id: str,
+        started_at: datetime | None = None,
+        context_snapshot: dict[str, str] | None = None,
+    ) -> RunState:
         """Creates and appends a new CycleRecord to the run history."""
         started_at = started_at or datetime.now(UTC)
-        new_cycle = CycleRecord(cycle_id=cycle_id, started_at=started_at)
+        new_cycle = CycleRecord(
+            cycle_id=cycle_id,
+            started_at=started_at,
+            context_snapshot=context_snapshot,
+        )
         new_history: list[CycleRecord] = [*state.run_history, new_cycle]
         return state.model_copy(update={"run_history": new_history})
 

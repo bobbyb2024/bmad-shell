@@ -10,6 +10,7 @@ from bmad_orch.config.schema import OrchestratorConfig
 from bmad_orch.engine.cycle import CycleExecutor
 from bmad_orch.engine.emitter import EventEmitter
 from bmad_orch.engine.events import RunCompleted
+from bmad_orch.engine.logs import consolidate_logs
 from bmad_orch.engine.prompt_resolver import PromptResolver
 from bmad_orch.exceptions import GitError, classify_error
 from bmad_orch.git import GitClient
@@ -65,13 +66,19 @@ class Runner:
                 from bmad_orch.exceptions import ConfigError
                 raise ConfigError(f"Output path '{path}' is outside the git repository root '{repo_root}'")
 
-    async def run(self, dry_run: bool = False, template_context: Mapping[str, str] | None = None) -> None:
+    async def run(
+        self,
+        dry_run: bool = False,
+        template_context: Mapping[str, str] | None = None,
+        start_cycle_id: str | None = None,
+        start_step_index: int = 0,
+    ) -> None:
         """Execute the orchestration plan.
         
         If dry_run is true, performs a full walk of the execution plan without calling providers.
         """
         try:
-            await self._run_internal(dry_run, template_context)
+            await self._run_internal(dry_run, template_context, start_cycle_id, start_step_index)
         except asyncio.CancelledError:
             logger.info("Execution cancelled by user.")
             await self._handle_impactful_error(None, is_abort=True)
@@ -83,7 +90,13 @@ class Runner:
                 await self._handle_impactful_error(e)
             raise
 
-    async def _run_internal(self, dry_run: bool = False, template_context: Mapping[str, str] | None = None) -> None:
+    async def _run_internal(
+        self,
+        dry_run: bool = False,
+        template_context: Mapping[str, str] | None = None,
+        start_cycle_id: str | None = None,
+        start_step_index: int = 0,
+    ) -> None:
         """Internal run logic."""
         start_time = time.time()
         template_context = template_context or {}
@@ -93,20 +106,33 @@ class Runner:
             from bmad_orch.types import StepType
             
             logger.info("Starting dry run...")
-            for _cycle_id, cycle in self.config.cycles.items():
+            found_start = start_cycle_id is None
+            current_step_offset = start_step_index
+
+            for cycle_id, cycle in self.config.cycles.items():
+                if not found_start:
+                    if cycle_id == start_cycle_id:
+                        found_start = True
+                    else:
+                        continue
+
                 for rep_idx in range(cycle.repeat):
                     cycle_num = rep_idx + 1
                     provider_name = self.config.providers[cycle.steps[0].provider].name
                     self.emitter.emit(CycleStarted(cycle_number=cycle_num, provider_name=provider_name))
                     
                     for step_idx, step in enumerate(cycle.steps):
+                        if step_idx < current_step_offset:
+                            continue
+
                         if rep_idx > 0 and step.type == StepType.GENERATIVE:
                             continue
                             
                         step_name = f"{step.skill}_{step_idx}"
                         self.emitter.emit(StepStarted(step_name=step_name, step_index=step_idx))
                         self.emitter.emit(StepCompleted(step_name=step_name, step_index=step_idx, success=True))
-                        
+                    
+                    current_step_offset = 0 # reset after first rep of start cycle
                     self.emitter.emit(CycleCompleted(cycle_number=cycle_num, provider_name=provider_name, success=True))
             return
 
@@ -141,15 +167,24 @@ class Runner:
         cycle_keys = list(self.config.cycles.keys())
         run_success = True
 
+        found_start = start_cycle_id is None
+        current_step_offset = start_step_index
+
         try:
             for i, cycle_id in enumerate(cycle_keys):
+                if not found_start:
+                    if cycle_id == start_cycle_id:
+                        found_start = True
+                    else:
+                        continue
+
                 cycle_config = self.config.cycles[cycle_id]
                 
-                # AC7: Crash-resumption
-                if self.state.run_history:
+                # AC7: Crash-resumption (only if we didn't explicitly start here)
+                if start_cycle_id is None and self.state.run_history:
                     success_reps = sum(
                         1 for r in self.state.run_history 
-                        if r.cycle_id.startswith(f"{cycle_id}:") and r.outcome == StepOutcome("success")
+                        if r.cycle_id.startswith(f"{cycle_id}:") and r.outcome == StepOutcome.SUCCESS
                     )
                     if success_reps == cycle_config.repeat:
                         logger.info(f"Skipping completed cycle type {cycle_id}")
@@ -160,7 +195,8 @@ class Runner:
                     cycle_id, 
                     cycle_config, 
                     self.state, 
-                    self.state.template_context
+                    self.state.template_context,
+                    start_step_index=current_step_offset
                 ))
                 
                 # If monitor is active, wait for either to finish
@@ -191,9 +227,11 @@ class Runner:
                         else:
                             raise RuntimeError("ResourceMonitor task finished unexpectedly")
 
+                current_step_offset = 0 # Reset after first cycle we actually run
+
                 if self.state.run_history:
                     last_cycle = self.state.run_history[-1]
-                    if last_cycle.outcome == StepOutcome("failure"):
+                    if last_cycle.outcome == StepOutcome.FAILURE:
                         logger.error(f"Cycle type {cycle_id} failed. Aborting remaining cycle types.")
                         run_success = False
                         break
@@ -206,6 +244,10 @@ class Runner:
                 
         # AC6: Emit RunCompleted
         self._emit_run_completed(start_time, run_success)
+
+        # AC: Consolidate logs
+        if self.state:
+            consolidate_logs(self.state, pathlib.Path("_bmad-output/implementation-artifacts"))
 
         # AC5: Handle git push at end
         if self.git_client and self.config.git.push_at == "end":
@@ -281,6 +323,10 @@ class Runner:
         # 2. Kill subprocesses
         if self._executor:
              await self._executor.cleanup_processes()
+
+        # 2.5 Consolidate logs
+        if self.state:
+            consolidate_logs(self.state, pathlib.Path("_bmad-output/implementation-artifacts"))
 
         # 3. Git emergency commit + push
         if self.git_client and self.config.git.enabled and not isinstance(error, GitError):

@@ -6,12 +6,18 @@ import subprocess
 import sys
 import time
 import traceback
+from datetime import UTC, datetime
+import json
 import uuid
 from typing import Annotated, Literal
 
 import typer
+from pydantic import ValidationError
 from rich.console import Console
 from rich.live import Live
+from rich.panel import Panel
+from rich.progress import BarColumn, Progress, TextColumn
+from rich.table import Table
 from rich.text import Text
 
 from bmad_orch.config import (
@@ -20,6 +26,7 @@ from bmad_orch.config import (
     validate_config,
     validate_provider_availability,
 )
+from bmad_orch.engine.errors import NON_RECOVERABLE_ERROR_TYPES
 from bmad_orch.engine.runner import Runner
 from bmad_orch.exceptions import (
     BmadOrchError,
@@ -35,7 +42,14 @@ from bmad_orch.exceptions import (
 )
 from bmad_orch.providers import get_adapter, get_registry
 from bmad_orch.rendering.summary import render_playbook_summary
-from bmad_orch.state import RunState, StateManager
+from bmad_orch.engine.resume import (
+    get_resume_context,
+    prepare_rerun,
+    prepare_restart_cycle,
+    prepare_skip,
+    prepare_start_fresh,
+)
+from bmad_orch.state import RunState, RunStatus, StateManager
 
 app = typer.Typer(help="BMAD Orchestrator - End-to-end automated story execution.")
 
@@ -275,17 +289,324 @@ def start(
 
 @app.command()
 def resume(
-    config: Annotated[str | None, typer.Option("--config", "-c", help="Path to bmad-orch.yaml")] = None,
+    config_path: Annotated[
+        pathlib.Path | None,
+        typer.Option("--config", "-c", help="Path to bmad-orch.yaml"),
+    ] = None,
+    resume_option: Annotated[
+        int | None,
+        typer.Option("--resume-option", "-r", help="Resume option (1-5)"),
+    ] = None,
+    force: Annotated[
+        bool,
+        typer.Option("--force", "-f", help="Bypass warnings and confirmations"),
+    ] = False,
+    force_unlock: Annotated[
+        bool,
+        typer.Option("--force-unlock", help="Override RUNNING status lock"),
+    ] = False,
 ) -> None:
-    """Resume execution from last completed step."""
-    _ = config
-    typer.echo("Resuming bmad-orch...")
+    """Resume execution from last failed or halted step."""
+    console = get_console()
+    error_console = get_error_console()
 
+    # AC 7, 8, 9 Logic — check state file before loading config
+    # Determine state path: config-relative if --config provided, else CWD default
+    if config_path:
+        state_path = config_path.parent / "bmad-orch-state.json"
+    else:
+        state_path = pathlib.Path(StateManager.DEFAULT_STATE_FILE)
+
+    if not state_path.exists():
+        error_console.print("[bold red]✗ No previous run found — use bmad-orch start[/bold red]")
+        raise typer.Exit(code=1)
+
+    try:
+        state = StateManager.load(state_path)
+    except StateError as e:
+        error_console.print(f"[bold red]✗ State file is corrupt: {e}[/bold red]")
+        raise typer.Exit(code=1) from e
+
+    if state.status == RunStatus.COMPLETED:
+        console.print("[bold green]✓ Previous run completed successfully[/bold green]")
+        console.print("Suggest: [bold cyan]bmad-orch start[/bold cyan] for a new run.")
+        raise typer.Exit(code=0)
+
+    if state.status == RunStatus.RUNNING and not force_unlock:
+        error_console.print("[bold red]✗ A run is currently in progress[/bold red]")
+        error_console.print("Use [bold cyan]--force-unlock[/bold cyan] to break the lock if it's a zombie process.")
+        raise typer.Exit(code=1)
+
+    # Load config for hash comparison and execution
+    try:
+        orch_config, source_path = get_config(str(config_path) if config_path else None)
+    except BmadOrchError as e:
+        error_console.print(f"[bold red]✗ Failed to load config: {e}[/bold red]")
+        raise typer.Exit(code=1) from e
+
+    # AC 11: Config Hash Mismatch
+    current_hash = get_config_hash(source_path)
+
+    if state.config_hash and current_hash != state.config_hash:
+        console.print("[bold yellow]⚠ Playbook config has changed since the failed run[/bold yellow]")
+        if not force:
+            if not sys.stdin.isatty():
+                error_console.print("[bold red]✗ Headless mode: aborting config mismatch without --force[/bold red]")
+                raise typer.Exit(code=1)
+            if not typer.confirm("Continue anyway?"):
+                raise typer.Exit(code=0)
+
+    # AC 1: Context Screen
+    ctx = get_resume_context(state)
+    from rich.panel import Panel
+    from rich.table import Table
+
+    table = Table.grid(padding=(0, 1))
+    table.add_column(style="cyan")
+    table.add_column()
+    table.add_row("Halted At:", ctx["halted_at"])
+    table.add_row("Failure Point:", ctx["failure_point"])
+    table.add_row("Failure Reason:", ctx["failure_reason"])
+    table.add_row("Error Type:", ctx["error_type"])
+    table.add_row("Summary:", f"{ctx['completed_cycles']} cycles / {ctx['completed_steps']} steps completed")
+
+    console.print(Panel(table, title="[bold yellow]Resume Context[/bold yellow]", border_style="yellow"))
+
+    # Options availability
+    failure_point_known = state.failure_point is not None and "/" in state.failure_point
+    
+    options = [
+        f"[1] Re-run failed step ({'Enabled' if failure_point_known else 'Disabled'})",
+        f"[2] Skip failed step ({'Enabled' if failure_point_known else 'Disabled'})",
+        "[3] Restart current cycle",
+        "[4] Start from scratch",
+        "[5] Cancel",
+    ]
+    
+    if not failure_point_known:
+        error_console.print("[bold red]⚠ failure_point is unknown. Options 1 and 2 are disabled.[/bold red]")
+
+    # AC 10: Headless Mode
+    if not sys.stdin.isatty() and resume_option is None:
+        error_console.print("[bold red]✗ Headless mode: --resume-option required[/bold red]")
+        raise typer.Exit(code=1)
+
+    if resume_option is None:
+        console.print("\n[bold cyan]Options:[/bold cyan]")
+        for opt in options:
+            console.print(opt)
+        
+        # AC 12: SIGINT Handling
+        def signal_handler(sig, frame):
+            console.print("\n[bold yellow]Exiting...[/bold yellow]")
+            sys.exit(0)
+        
+        signal.signal(signal.SIGINT, signal_handler)
+        
+        choice = typer.prompt("\nSelect an option", type=int)
+    else:
+        choice = resume_option
+
+    # AC 2: Option Execution
+    if choice == 5:
+        console.print("Cancelled.")
+        raise typer.Exit(code=0)
+    
+    if choice in (1, 2) and not failure_point_known:
+        error_console.print(f"[bold red]✗ Option {choice} is disabled because failure_point is unknown.[/bold red]")
+        raise typer.Exit(code=1)
+
+    start_cycle_id = None
+    start_step_index = 0
+    template_context = dict(state.template_context)
+
+    if choice == 1:
+        start_cycle_id, start_step_index, template_context = prepare_rerun(state)
+    elif choice == 2:
+        if not force:
+            console.print("[bold yellow]⚠ Skipping this step may cause subsequent steps to fail if they depend on its output context.[/bold yellow]")
+            if not typer.confirm("Are you sure?"):
+                raise typer.Exit(code=0)
+        start_cycle_id, start_step_index, template_context = prepare_skip(state, list(orch_config.cycles.keys()))
+    elif choice == 3:
+        console.print("[bold yellow]⚠ External side-effects (e.g. written files) from the failed run are not rolled back.[/bold yellow]")
+        start_cycle_id, start_step_index, template_context = prepare_restart_cycle(state)
+    elif choice == 4:
+        prepare_start_fresh(state_path)
+        console.print("State reset. Starting from scratch...")
+        # Start fresh means no start_cycle_id, start_step_index = 0, template_context = {}
+        start_cycle_id = None
+        start_step_index = 0
+        template_context = {}
+    else:
+        error_console.print(f"[bold red]✗ Invalid option: {choice}[/bold red]")
+        raise typer.Exit(code=1)
+
+    # Validate start_cycle_id exists if it's not a fresh start
+    if start_cycle_id and start_cycle_id not in orch_config.cycles:
+        error_console.print(f"[bold red]✗ Resume point '{start_cycle_id}' no longer exists in playbook.[/bold red]")
+        raise typer.Exit(code=1)
+
+    # Run
+    runner = Runner(orch_config, state_path=state_path, adapter_factory=get_adapter)
+    try:
+        asyncio.run(runner.run(
+            template_context=template_context,
+            start_cycle_id=start_cycle_id,
+            start_step_index=start_step_index
+        ))
+    except KeyboardInterrupt:
+        error_console.print("\n[bold yellow]■ [Execution Halted by User] — run bmad-orch resume[/bold yellow]")
+        raise typer.Exit(code=130)
+    except BmadOrchError as e:
+        error_console.print(f"\n[bold red]✗ {e}[/bold red]")
+        raise typer.Exit(code=1) from e
+    except Exception as e:
+        error_console.print(f"\n[bold red]✗ Unexpected error: {e}[/bold red]")
+        traceback.print_exc()
+        raise typer.Exit(code=1) from e
+
+
+def _resolve_state_path(run_id: str | None = None) -> pathlib.Path:
+    """Resolves the path to the state file, optionally for a specific run_id."""
+    if run_id:
+        # Check standard location with run_id prefix
+        artifact_dir = pathlib.Path("_bmad-output/implementation-artifacts")
+        path = artifact_dir / f"{run_id}-state.json"
+        if path.exists():
+            return path
+        # Fallback to CWD
+        path = pathlib.Path(f"{run_id}-state.json")
+        if path.exists():
+            return path
+        # If run_id is provided but not found, return the expected path so caller can report missing
+        return artifact_dir / f"{run_id}-state.json"
+    
+    # Default behavior: check CWD or implementation-artifacts for generic state
+    default_path = pathlib.Path(StateManager.DEFAULT_STATE_FILE)
+    if default_path.exists():
+        return default_path
+        
+    artifact_path = pathlib.Path("_bmad-output/implementation-artifacts") / StateManager.DEFAULT_STATE_FILE
+    return artifact_path
 
 @app.command()
-def status() -> None:
-    """View current orchestrator state."""
-    typer.echo("Status of bmad-orch...")
+def status(
+    run_id: Annotated[str | None, typer.Option("--run-id", help="Filter by specific Run ID")] = None,
+    json_output: Annotated[bool, typer.Option("--json", help="Output full state as JSON")] = False,
+) -> None:
+    """View current orchestrator status and progress."""
+    console = get_console()
+    error_console = get_error_console()
+    
+    state_path = _resolve_state_path(run_id)
+    
+    if not state_path.exists():
+        error_console.print(f"[bold red]✗ No previous runs found.[/bold red] (Checked: {state_path})")
+        raise typer.Exit(code=1)
+        
+    try:
+        if state_path.stat().st_size == 0:
+            raise StateError("State file is empty (0-byte)")
+             
+        with state_path.open(encoding="utf-8") as f:
+            raw_json = f.read()
+            state = RunState.model_validate_json(raw_json)
+    except (json.JSONDecodeError, ValidationError, StateError) as e:
+        error_console.print(f"[bold red]✗ State file is corrupted or unreadable: {e}[/bold red]")
+        raise typer.Exit(code=2) from e
+
+    if json_output:
+        # AC6: JSON output to stdout only, suppress everything else
+        sys.stdout.write(state.model_dump_json(indent=2) + "\n")
+        sys.stdout.flush()
+        # AC3: Respect exit codes even in JSON mode
+        if state.status in (RunStatus.FAILED, RunStatus.HALTED):
+            raise typer.Exit(code=3)
+        raise typer.Exit(code=0)
+
+    # AC3: Rich-formatted summary
+    status_colors = {
+        RunStatus.PENDING: "white",
+        RunStatus.RUNNING: "cyan",
+        RunStatus.COMPLETED: "green",
+        RunStatus.FAILED: "red",
+        RunStatus.HALTED: "yellow",
+    }
+    status_color = status_colors.get(state.status, "white")
+    
+    table = Table.grid(padding=(0, 1))
+    table.add_column(style="bold white", width=20)
+    table.add_column()
+    
+    table.add_row("Run ID:", state.run_id)
+    table.add_row("Status:", f"[{status_color}]{state.status.value}[/{status_color}]")
+    
+    # Progress Calculation
+    completed_cycles = len(state.run_history)
+    # We don't strictly know the total without config, so we'll just show completed
+    # unless it's COMPLETED status
+    if state.status == RunStatus.COMPLETED:
+        total_cycles_str = f"{completed_cycles}/{completed_cycles}"
+    else:
+        total_cycles_str = f"{completed_cycles} (in-progress)"
+    table.add_row("Cycle Progress:", total_cycles_str)
+    
+    # Last Step
+    last_step_info = "[dim]None[/dim]"
+    if state.run_history:
+        last_cycle = state.run_history[-1]
+        if last_cycle.steps:
+            last_step = last_cycle.steps[-1]
+            last_step_info = f"{last_step.step_id} ([cyan]{last_step.provider_name}[/cyan]) -> {last_step.outcome.value}"
+    table.add_row("Last Step:", last_step_info)
+    
+    # Elapsed Time
+    start_time = state.run_history[0].started_at if state.run_history else None
+    elapsed_str = "not started"
+    if start_time:
+        if state.status == RunStatus.PENDING:
+            elapsed_str = "not started"
+        elif state.status == RunStatus.RUNNING:
+            elapsed = datetime.now(UTC) - start_time
+            elapsed_str = str(elapsed).split(".")[0]
+        else:
+            # Terminal state
+            end_time = state.halted_at
+            if not end_time and state.run_history:
+                end_time = state.run_history[-1].finished_at
+            
+            if end_time:
+                elapsed = end_time - start_time
+                elapsed_str = str(elapsed).split(".")[0]
+            else:
+                elapsed_str = "[dim]Unknown[/dim]"
+    
+    table.add_row("Elapsed Time:", elapsed_str)
+    
+    console.print()
+    console.print(Panel(table, title="[bold cyan]Run Status[/bold cyan]", border_style=status_color))
+    
+    # AC5: FAILED/HALTED details
+    if state.status in (RunStatus.FAILED, RunStatus.HALTED):
+        err_table = Table.grid(padding=(0, 1))
+        err_table.add_column(style="bold red", width=20)
+        err_table.add_column()
+        err_table.add_row("Failure Point:", state.failure_point or "Unknown")
+        err_table.add_row("Error Type:", state.error_type or "Unknown")
+        err_table.add_row("Reason:", state.failure_reason or "Unknown")
+        
+        console.print(Panel(err_table, title="[bold red]Failure Details[/bold red]", border_style="red"))
+        
+        # Suggest resume
+        if state.error_type not in NON_RECOVERABLE_ERROR_TYPES:
+            console.print("\n[bold yellow]💡 Suggestion:[/bold yellow] This error may be recoverable. Run [cyan]bmad-orch resume[/cyan] to continue.")
+        else:
+            console.print("\n[bold red]✖ Non-Recoverable Error:[/bold red] Restarting from scratch is recommended for this error type.")
+            
+        raise typer.Exit(code=3)
+
+    raise typer.Exit(code=0)
 
 
 @app.command()

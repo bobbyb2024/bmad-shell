@@ -66,8 +66,8 @@ development_status:
   4-1-git-integration-configurable-commits: done
   4-2-emergency-error-flow-impactful-error-handling: done
   4-3-resource-monitoring: done
-  4-4-resume-flow-recovery: ready-for-dev
-  4-5-log-consolidation-status-command: backlog
+  4-4-resume-flow-recovery: done
+  4-5-log-consolidation-status-command: done
   4-6-headless-renderer-exit-code-contract: backlog
   epic-4-retrospective: optional
   epic-5: backlog
